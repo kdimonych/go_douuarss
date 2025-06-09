@@ -7,7 +7,7 @@ import (
 )
 
 // UnmarshalText implements for RFC1123Z time format
-func (ct *PubDate) UnmarshalText(text []byte) error {
+func (ct *RFC1123ZDate) UnmarshalText(text []byte) error {
 	t, err := time.Parse(time.RFC1123Z, string(text))
 	if err != nil {
 		return err
