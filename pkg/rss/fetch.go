@@ -1,17 +1,30 @@
 package rss
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
-func Fetch(url string) ([]byte, error) {
-	if url == "" {
-		url = "https://dou.ua/feed/"
+func Fetch(urlStr string) ([]byte, error) {
+	if urlStr == "" {
+		urlStr = "https://dou.ua/feed/"
 	}
 
-	res, err := http.Get(url)
+	parsed, err := url.Parse(urlStr)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return nil, FetchError{Code: ErrorCodeUnreachable, Details: "invalid URL"}
+	}
+
+	ctx := context.Background() // or use a timeout: context.WithTimeout(...)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, http.NoBody)
+	if err != nil {
+		return nil, FetchError{Code: ErrorCodeUnreachable, Details: err.Error()}
+	}
+
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, FetchError{Code: ErrorCodeUnreachable, Details: err.Error()}
 	}
