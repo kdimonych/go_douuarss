@@ -1,0 +1,91 @@
+---
+exclude: '^$'
+fail_fast: false
+repos:
+  - repo: local
+    hooks:
+      - id: golangci-lint-fmt
+        name: run golangci-lint format
+        language: golang
+        entry: golangci-lint
+        args: ["fmt"]
+        types: [go]
+      - id: golangci-lint-run-fix
+        name: run golangci-lint with fix
+        language: golang
+        entry: golangci-lint
+        args: ["run", "./...", "--fix", "--config", ".golangci.yml"]
+        exclude: "^.*$"
+        always_run: true
+        types: []
+      - id: go-mod-tidy
+        name: run go mod tidy
+        language: golang
+        entry: go
+        args: ["mod", "tidy"]
+        exclude: "^.*$"
+        always_run: true
+        types: []
+      - id: go-mod-vendor
+        name: run go mod vendor
+        language: golang
+        entry: go
+        args: ["mod", "vendor"]
+        exclude: "^.*$"
+        always_run: true
+        types: []
+
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        name: check for common misspelled words
+
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.22
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-tables
+          - mdformat-gfm
+          - mdformat-toc
+          - mdformat-footnote
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-xml
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: forbid-submodules
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: pretty-format-json
+        args: [--autofix, --no-sort-keys, --no-ensure-ascii]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.0
+    hooks:
+      - id: yamllint
+        name: check yaml files with yamllint
+        args: ["-c", ".yamllint.yaml"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.2
+    hooks:
+      - id: ruff
+        name: check python files with ruff
+        # override line length to format accordingly, but warn less
+        args: [--line-length=160]
+      - id: ruff-format
+        name: format python files with ruff
