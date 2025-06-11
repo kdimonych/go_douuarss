@@ -20,7 +20,7 @@ func Parse(blob []byte) ([]Channel, error) {
 	var rss Xml
 	err := xml.Unmarshal(blob, &rss)
 	if err != nil {
-		return nil, fmt.Errorf("Parse error: %w", err)
+		return nil, fmt.Errorf("parse error: %w", err)
 	}
 
 	return rss.Channel, nil
@@ -29,7 +29,7 @@ func Parse(blob []byte) ([]Channel, error) {
 func FetchAndParse(url string) ([]Channel, error) {
 	data, fetchErr := Fetch(url)
 	if fetchErr != nil {
-		return nil, fmt.Errorf("Fetch error: %w", fetchErr)
+		return nil, fmt.Errorf("fetch error: %w", fetchErr)
 	}
 
 	channels, parseErr := Parse(data)
@@ -38,7 +38,7 @@ func FetchAndParse(url string) ([]Channel, error) {
 	}
 
 	if len(channels) == 0 {
-		return nil, &FetchError{ErrorCodeNoData, "No channels found in the RSS feed"}
+		return nil, &FetchError{ErrorCodeNoData, fmt.Errorf("no channels found in the RSS feed")}
 	}
 
 	return channels, nil

@@ -1,6 +1,7 @@
 package rss
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -29,9 +30,9 @@ func TestFetchError_Error(t *testing.T) {
 		err      *FetchError
 		expected string
 	}{
-		{&FetchError{ErrorCodeUnreachable, "Failed to fetch data"}, "Unreachable URL (Failed to fetch data)"},
-		{&FetchError{ErrorCodeHttpError, "HTTP error ocured, Status: 404"}, "HTTP error (HTTP error ocured, Status: 404)"},
-		{&FetchError{ErrorCodeNoData, "Server returned no data"}, "No data received (Server returned no data)"},
+		{&FetchError{ErrorCodeUnreachable, fmt.Errorf("failed to fetch data")}, "Unreachable URL (failed to fetch data)"},
+		{&FetchError{ErrorCodeHttpError, fmt.Errorf("HTTP error ocured, Status: 404")}, "HTTP error (HTTP error ocured, Status: 404)"},
+		{&FetchError{ErrorCodeNoData, fmt.Errorf("server returned no data")}, "No data received (server returned no data)"},
 	}
 
 	for _, test := range tests {
