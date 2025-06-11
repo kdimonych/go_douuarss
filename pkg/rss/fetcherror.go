@@ -30,9 +30,6 @@ type FetchError struct {
 	Details string    // Additional details about the error
 }
 
-func (e *FetchError) Error() string {
-	if e == nil {
-		return "nil FetchError"
-	}
+func (e FetchError) Error() string {
 	return fmt.Sprintf("%s (%s)", e.Code, e.Details)
 }
