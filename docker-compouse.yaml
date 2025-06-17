@@ -1,15 +1,20 @@
 ---
 # Base migration service
-x-gouse-base: &gouse-base
+x-go-service-base: &go-service-base
   env_file:
     - .env
   depends_on:
     - postgres
-  volumes:
-    - ${GOUSE_MIGRATE_PATH}:/app
   working_dir: /app
   environment:
     DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+
+x-gouse-base: &gouse-base
+  <<: *go-service-base
+  build:
+    context: ${GOUSE_MIGRATE_PATH}
+  volumes:
+    - ${GOUSE_MIGRATE_PATH}:/app
 
 services:
   postgres:
@@ -28,20 +33,27 @@ services:
       - ${POSTGRES_HOST_DB_PATH}:/var/lib/postgresql/data
 
   gouse-migrate:
-    build:
-      context: ${GOUSE_MIGRATE_PATH}
     container_name: gouse_migrate
     <<: *gouse-base
     # You can override or add fields here, e.g.:
     command: ["go", "run", "main.go", "up", "-migrations=./migrations"]
 
   gouse-migrate-down:
-    build:
-      context: ${GOUSE_MIGRATE_PATH}
     container_name: gouse_migrate_down
     <<: *gouse-base
     command: ["go", "run", "main.go", "down", "-migrations=./migrations"]
 
+  news-checker:
+    container_name: news_checker
+    <<: *go-service-base
+    build:
+      context: ./services/news_checker
+    depends_on:
+      - postgres
+      - gouse-migrate
+    volumes:
+      - ./services/news_checker:/app
+    command: ["go", "run", "main.go"]
 
 volumes:
   postgres_data:
