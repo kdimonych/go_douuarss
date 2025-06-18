@@ -4,23 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	//"github.com/jackc/pgx/v5"
 	"github.com/kdimonych/go_douuarss/lib/rss"
 )
 
 func main() {
-	// dbURL := os.Getenv("DATABASE_URL")
-	// if dbURL == "" {
-	// 	log.Fatal("DATABASE_URL is not set")
-	// }
-
-	// conn, err := pgx.Connect(context.Background(), dbURL)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-	// 	os.Exit(1)
-	// }
-	// defer conn.Close(context.Background())
-
 	provider := rss.StartRssProvider(context.Background())
 	defer provider.Close()
 

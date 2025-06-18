@@ -1,1 +1,4 @@
 /pgdata/*
+/vendor/*
+**/go.sum
+go.work.sum
