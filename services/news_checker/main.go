@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"time"
 
 	//"github.com/jackc/pgx/v5"
 	"github.com/kdimonych/go_douuarss/pkg/rss"
@@ -21,8 +21,10 @@ func main() {
 	// }
 	// defer conn.Close(context.Background())
 
-	c := make(chan rss.Channel)
-	go rss_provider(c)
+	provider := rss.StartRssProvider(context.Background())
+	defer provider.Close()
+
+	c := provider.GetChannel()
 
 	for channel := range c {
 		// Here you can process the channel received from the RSS provider
@@ -45,32 +47,4 @@ func main() {
 
 		// Here you can insert the channel and items into the database
 	}
-}
-
-func rss_provider(c chan rss.Channel) {
-	url := "https://dou.ua/feed/"
-	// This function is a placeholder for the RSS provider logic.
-	// It can be implemented to fetch and process RSS feeds.
-	fmt.Println("RSS provider function called")
-
-	for {
-		channels, err := rss.FetchAndParse(url)
-		if err != nil {
-			fmt.Printf("Error fetching and parsing RSS feed: %v\n", err)
-			continue
-		}
-
-		if len(channels) == 0 {
-			fmt.Println("No channels found in the RSS feed")
-			continue
-		}
-
-		for _, channel := range channels {
-			c <- channel // Sending the RSS channel to the channel
-		}
-
-		fmt.Println("Sleep for 10 seconds before fetching again")
-		time.Sleep(10000 * time.Millisecond)
-	}
-
 }

@@ -8,6 +8,7 @@ import (
 
 const (
 	chanelBufferSize = 100
+	rssUrl           = "https://dou.ua/feed/"
 )
 
 type RssProviderConnection struct {
@@ -38,7 +39,7 @@ func worker(ctx context.Context, wg *sync.WaitGroup, connection *RssProviderConn
 			// Continue fetching RSS feeds until the context is done
 		}
 
-		channels, err := FetchAndParse(ctx, "https://dou.ua/feed/")
+		channels, err := FetchAndParse(ctx, rssUrl)
 		if err != nil {
 			// Log the error and continue to the next iteration
 			fmt.Printf("Error fetching RSS feed: %v\n", err)
