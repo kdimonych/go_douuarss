@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kdimonych/go_douuarss/pkg/rss"
+	"github.com/kdimonych/go_douuarss/lib/rss"
 )
 
 func main() {

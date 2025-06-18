@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	//"github.com/jackc/pgx/v5"
-	"github.com/kdimonych/go_douuarss/pkg/rss"
+	"github.com/kdimonych/go_douuarss/lib/rss"
 )
 
 func main() {

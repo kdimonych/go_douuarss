@@ -13,6 +13,16 @@
 
 version: "2"
 
+run:
+  # Only lint these directories (relative to the root of your repo)
+  include:
+    - ^lib/dd*
+    - ^services/gouse_migrate/*
+    - ^services/news_checker/*
+    - ^cmd/dourssreader/*
+  skip-dirs:
+    - ^pgdata/
+
 linters:
   default: none
   # This list of linters is not a recommendation (same thing for all this configuration file).

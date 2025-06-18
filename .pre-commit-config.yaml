@@ -14,7 +14,7 @@ repos:
         name: run golangci-lint with fix
         language: golang
         entry: golangci-lint
-        args: ["run", "./...", "--fix", "--config", ".golangci.yml"]
+        args: ["run", "lib/...", "cmd/dourssreader/...", "services/gouse_migrate/...", "services/news_checker/...", "--fix", "--config", ".golangci.yml"]
         exclude: "^.*$"
         always_run: true
         types: []
