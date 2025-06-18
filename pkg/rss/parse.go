@@ -1,6 +1,7 @@
 package rss
 
 import (
+	"context"
 	"encoding/xml"
 	"fmt"
 	"time"
@@ -26,8 +27,8 @@ func Parse(blob []byte) ([]Channel, error) {
 	return rss.Channel, nil
 }
 
-func FetchAndParse(url string) ([]Channel, error) {
-	data, fetchErr := Fetch(url)
+func FetchAndParse(ctx context.Context, url string) ([]Channel, error) {
+	data, fetchErr := Fetch(ctx, url)
 	if fetchErr != nil {
 		return nil, fmt.Errorf("fetch error: %w", fetchErr)
 	}

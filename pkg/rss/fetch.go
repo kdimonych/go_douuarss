@@ -8,7 +8,7 @@ import (
 	"net/url"
 )
 
-func Fetch(urlStr string) ([]byte, error) {
+func Fetch(ctx context.Context, urlStr string) ([]byte, error) {
 	if urlStr == "" {
 		urlStr = "https://dou.ua/feed/"
 	}
@@ -18,7 +18,6 @@ func Fetch(urlStr string) ([]byte, error) {
 		return nil, FetchError{Code: ErrorCodeUnreachable, Details: fmt.Errorf("invalid URL: %s", urlStr)}
 	}
 
-	ctx := context.Background() // or use a timeout: context.WithTimeout(...)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, http.NoBody)
 	if err != nil {
 		return nil, FetchError{Code: ErrorCodeUnreachable, Details: err}

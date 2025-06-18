@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/kdimonych/go_douuarss/pkg/rss"
@@ -8,7 +9,8 @@ import (
 
 func main() {
 	url := "https://dou.ua/feed/"
-	channels, err := rss.FetchAndParse(url)
+	ctx := context.Background() // or use a timeout: context.WithTimeout(...)
+	channels, err := rss.FetchAndParse(ctx, url)
 	if err != nil {
 		fmt.Printf("Error fetching and parsing RSS feed: %v\n", err)
 		return
