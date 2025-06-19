@@ -1,9 +1,5 @@
 package rss
 
-import (
-	"fmt"
-)
-
 type ErrorCode int
 
 const (
@@ -30,6 +26,10 @@ type FetchError struct {
 	Details error     // Additional details about the error
 }
 
-func (e FetchError) Error() string {
-	return fmt.Sprintf("%s (%v)", e.Code, e.Details)
+func (e *FetchError) Error() string {
+	return e.Code.String()
+}
+
+func (e *FetchError) Unwrap() error {
+	return e.Details
 }
