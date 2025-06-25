@@ -3,13 +3,27 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/kdimonych/go_douuarss/lib/rss"
+	"github.com/kdimonych/go_douuarss/lib/storage"
 )
 
 func main() {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Panic("DATABASE_URL is not set")
+	}
+
 	provider := rss.StartRssProvider(context.Background())
 	defer provider.Close()
+
+	s, err := storage.NewStorage(dbURL)
+	if err != nil {
+		log.Panic("Unable to initialize storage: %w", err)
+	}
+	defer s.Close()
 
 	c := provider.GetChannel()
 
@@ -32,6 +46,10 @@ func main() {
 			fmt.Println("--------------------------------------------------")
 		}
 
+		if _, err := s.InsertOrMergeChannel(&channel); err != nil {
+			log.Printf("Unable to insert or merge channel %s: %v", channel.Title, err)
+			continue
+		}
 		// Here you can insert the channel and items into the database
 	}
 }
