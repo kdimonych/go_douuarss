@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS channels (
     id SERIAL PRIMARY KEY,
-    title TEXT,
+    title TEXT UNIQUE,
     link TEXT,
     description TEXT,
     language TEXT,
@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS items (
     title TEXT NOT NULL,
     link TEXT,
     description TEXT NOT NULL,
-    author TEXT,
-    category TEXT,
     pub_date TIMESTAMPTZ,
-    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE
+    creator TEXT,
+    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    hash TEXT UNIQUE
 );
 -- +goose StatementEnd
 
