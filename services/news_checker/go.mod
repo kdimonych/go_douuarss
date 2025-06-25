@@ -2,4 +2,4 @@ module github.com/kdimonych/go_douuarss/service/news_checker
 
 go 1.24.3
 
-require github.com/kdimonych/go_douuarss/lib v0.0.0-20250618170243-0a314c412b4c
+require github.com/kdimonych/go_douuarss/lib v0.0.0-20250625112613-78957e36aa3a
