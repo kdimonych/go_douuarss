@@ -18,6 +18,7 @@ x-gouse-base: &gouse-base
     - postgres
   volumes:
     - ${GOUSE_MIGRATE_PATH}:/app
+    - ./lib/storage/migrations:/app/migrations
 
 # The services section defines the services that will be run in the Docker Compose environment.
 services:
