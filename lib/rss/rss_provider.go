@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 )
 
 const (
 	chanelBufferSize = 100
 	rssUrl           = "https://dou.ua/feed/"
+	recheckPeriod    = 20 * time.Second
 )
 
 type RssProviderConnection struct {
@@ -25,6 +27,16 @@ func (connection *RssProviderConnection) Close() {
 	}
 }
 
+// SleepWithContext waits for the given duration or returns early if the context is canceled.
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	select {
+	case <-time.After(d):
+		return nil // Slept the full duration
+	case <-ctx.Done():
+		return ctx.Err() // Woken up by context cancellation
+	}
+}
+
 func worker(ctx context.Context, wg *sync.WaitGroup, connection *RssProviderConnection) {
 	defer wg.Done()
 	for {
@@ -34,6 +46,7 @@ func worker(ctx context.Context, wg *sync.WaitGroup, connection *RssProviderConn
 		select {
 		case <-ctx.Done():
 			close(connection.channel)
+			fmt.Printf("Terminated\n")
 			return
 		default:
 			// Continue fetching RSS feeds until the context is done
@@ -49,6 +62,8 @@ func worker(ctx context.Context, wg *sync.WaitGroup, connection *RssProviderConn
 		for _, channel := range channels {
 			connection.channel <- channel
 		}
+
+		_ = sleepWithContext(ctx, recheckPeriod)
 	}
 }
 
