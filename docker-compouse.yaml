@@ -8,16 +8,16 @@ x-go-service-base: &go-service-base
     DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
 
 # Base migration service configuration
-x-gouse-base: &gouse-base
+x-goose-base: &goose-base
   <<: *go-service-base
   build:
     # The path to the Dockerfile relative the context
     dockerfile: ../Dockerfile
-    context: ${GOUSE_MIGRATE_PATH}
+    context: ${GOOSE_MIGRATE_PATH}
   depends_on:
     - postgres
   volumes:
-    - ${GOUSE_MIGRATE_PATH}:/app
+    - ${GOOSE_MIGRATE_PATH}:/app
     - ./lib/storage/migrations:/app/migrations
 
 # The services section defines the services that will be run in the Docker Compose environment.
@@ -38,15 +38,15 @@ services:
     volumes:
       - ${POSTGRES_HOST_DB_PATH}:/var/lib/postgresql/data
 
-  # Gouse migration services configurations
-  gouse-migrate:
-    container_name: gouse_migrate
-    <<: *gouse-base
+  # GOOSE migration services configurations
+  goose-migrate:
+    container_name: goose_migrate
+    <<: *goose-base
     command: ["go", "run", "main.go", "up", "-migrations=./migrations"]
 
-  gouse-migrate-down:
-    container_name: gouse_migrate_down
-    <<: *gouse-base
+  goose-migrate-down:
+    container_name: goose_migrate_down
+    <<: *goose-base
     command: ["go", "run", "main.go", "down", "-migrations=./migrations"]
 
   # News Checker service configuration
@@ -60,7 +60,7 @@ services:
       context: ${NEWS_CHECKER_PATH}
     depends_on:
       - postgres
-      - gouse-migrate
+      - goose-migrate
     volumes:
       - ${NEWS_CHECKER_PATH}:/app
     command: ["go", "run", "main.go"]
