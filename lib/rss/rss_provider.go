@@ -63,6 +63,7 @@ func worker(ctx context.Context, wg *sync.WaitGroup, connection *RssProviderConn
 			connection.channel <- channel
 		}
 
+		fmt.Printf("====>> Sleep for: %v\n", recheckPeriod)
 		_ = sleepWithContext(ctx, recheckPeriod)
 	}
 }
