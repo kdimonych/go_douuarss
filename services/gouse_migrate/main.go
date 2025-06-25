@@ -1,14 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 
-	_ "github.com/lib/pq"
-	"github.com/pressly/goose/v3"
+	"github.com/kdimonych/go_douuarss/lib/storage"
 )
 
 func main() {
@@ -28,21 +26,21 @@ func main() {
 	}
 
 	migrate := func() int {
-		db, err := sql.Open("postgres", dbURL)
+		m, err := storage.NewMigrator(dbURL, migrationsDir)
 		if err != nil {
-			log.Fatalf("failed to open database: %v", err)
+			log.Fatalf("failed to create migrattor: %v", err)
 		}
-		defer db.Close()
+		defer m.Close()
 
 		switch cmd {
 		case "up":
-			if err := goose.Up(db, migrationsDir); err != nil {
+			if err := m.Up(); err != nil {
 				log.Printf("goose up failed: %v", err)
 				return 1
 			}
 			log.Println("Migrations applied successfully!")
 		case "down":
-			if err := goose.Down(db, migrationsDir); err != nil {
+			if err := m.Down(); err != nil {
 				log.Printf("goose down failed: %v", err)
 				return 1
 			}

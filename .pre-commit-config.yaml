@@ -4,6 +4,16 @@ fail_fast: false
 repos:
   - repo: local
     hooks:
+      - id: go-mod-tidy
+        name: run go mod tidy
+        language: system
+        entry: ./scripts/run_go_mod_tidy.sh
+        files: (^|/)go\.mod$
+      - id: go-work-vendor
+        name: run go work vendor
+        language: system
+        entry: ./scripts/run_go_work_vendor.sh
+        files: (^|/)go\.work$
       - id: golangci-lint-fmt
         name: run golangci-lint format
         language: golang
@@ -18,16 +28,6 @@ repos:
         exclude: "^.*$"
         always_run: true
         types: []
-      - id: go-mod-tidy
-        name: run go mod tidy
-        language: system
-        entry: ./scripts/run_go_mod_tidy.sh
-        files: (^|/)go\.mod$
-      - id: go-work-vendor
-        name: run go work vendor
-        language: system
-        entry: ./scripts/run_go_work_vendor.sh
-        files: (^|/)go\.work$
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
