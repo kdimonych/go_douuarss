@@ -45,9 +45,11 @@ services:
     command: ["go", "run", "main.go", "up", "-migrations=./migrations"]
 
   goose-migrate-down:
+    profiles: ["manual"]
     container_name: goose_migrate_down
     <<: *goose-base
     command: ["go", "run", "main.go", "down", "-migrations=./migrations"]
+
 
   # News Checker service configuration
   news-checker:
