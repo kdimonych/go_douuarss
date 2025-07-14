@@ -17,7 +17,6 @@ type Migrator interface {
 }
 
 type migratorImpl struct {
-	DbURL         string
 	MigrationsDir string
 	Db            *sql.DB
 }
@@ -72,20 +71,45 @@ func (migrator *migratorImpl) StorageVersion() (int64, error) {
 	return version, nil
 }
 
-func NewMigrator(dbURL, migrationsDir string) (Migrator, error) {
+type MigratorBuilder interface {
+	WithDbConnectionFabric(dbConnectionFabric DbConectionFabric) MigratorBuilder
+	Build(dbURL, migrationsDir string) (Migrator, error)
+}
+
+type migratorBuilderImpl struct {
+	dbConnectionFabric DbConectionFabric
+}
+
+func NewMigratorBuilder() MigratorBuilder {
+	return &migratorBuilderImpl{
+		dbConnectionFabric: NewDbConnectionFabric(),
+	}
+}
+
+func (builder *migratorBuilderImpl) WithDbConnectionFabric(dbConnectionFabric DbConectionFabric) MigratorBuilder {
+	if dbConnectionFabric == nil {
+		log.Println("Nil DbConnectionFabric provided. Using default DbConnectionFabric")
+		dbConnectionFabric = NewDbConnectionFabric()
+	}
+	builder.dbConnectionFabric = dbConnectionFabric
+	return builder
+}
+
+func (builder *migratorBuilderImpl) Build(dbURL, migrationsDir string) (Migrator, error) {
 	if dbURL == "" {
 		return nil, fmt.Errorf("database URL cannot be empty")
 	}
+
 	if migrationsDir == "" {
 		return nil, fmt.Errorf("migration directory cannot be emlpty")
 	}
-	db, err := sql.Open("postgres", dbURL)
+
+	db, err := builder.dbConnectionFabric.CreateDbConnection("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	var migrator = &migratorImpl{
-		DbURL:         dbURL,
 		MigrationsDir: migrationsDir,
 		Db:            db,
 	}

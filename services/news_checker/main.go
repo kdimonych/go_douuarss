@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
+	"sync"
 
-	"github.com/kdimonych/go_douuarss/lib/rss"
-	"github.com/kdimonych/go_douuarss/lib/storage"
+	"github.com/kdimonych/go_douuarss/lib/news_service"
 )
 
 func main() {
@@ -16,40 +15,27 @@ func main() {
 		log.Panic("DATABASE_URL is not set")
 	}
 
-	provider := rss.StartRssProvider(context.Background())
-	defer provider.Close()
+	config := &news_service.Config{
+		DatabaseURL:   dbURL,
+		MigrationsDir: "./migrations",
+	}
 
-	s, err := storage.NewStorage(dbURL)
+	service, err := news_service.NewNewsServiceBuilder().Build(config)
 	if err != nil {
-		log.Panic("Unable to initialize storage: %w", err)
+		log.Panicf("Unable to initialize news service: %v", err)
 	}
-	defer s.Close()
 
-	c := provider.GetChannel()
-
-	for channel := range c {
-		// Here you can process the channel received from the RSS provider
-		fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
-		fmt.Printf("Received Channel: %s\n", channel.Title)
-		fmt.Printf("Link: %s\n", channel.Link)
-		fmt.Printf("Description: %s\n", channel.Description)
-		fmt.Printf("Language: %s\n", channel.Language)
-		fmt.Printf("Last Build Date: %v\n", channel.LastBuildDate)
-
-		fmt.Println("--------------------------------------------------")
-		for _, item := range channel.Items {
-			fmt.Printf("Item Title: %s\n", item.Title)
-			fmt.Printf("Item Link: %s\n", item.Link)
-			fmt.Printf("Item PubDate: %v\n", item.PubDate)
-			fmt.Printf("Item Creator: %s\n", item.Creator)
-			fmt.Printf("Item Description:\n%s\n", item.Description)
-			fmt.Println("--------------------------------------------------")
-		}
-
-		if _, err := s.InsertOrMergeChannel(&channel); err != nil {
-			log.Printf("Unable to insert or merge channel %s: %v", channel.Title, err)
-			continue
-		}
-		// Here you can insert the channel and items into the database
+	if err := service.Init(); err != nil {
+		log.Panicf("Unable to initialize news service: %v", err)
 	}
+
+	waitGroup := &sync.WaitGroup{}
+
+	if err := service.Start(waitGroup, context.Background()); err != nil {
+		log.Panicf("Unable to start news service: %v", err)
+	}
+
+	waitGroup.Wait()
+
+	service.Stop()
 }

@@ -26,7 +26,7 @@ func main() {
 	}
 
 	migrate := func() int {
-		m, err := storage.NewMigrator(dbURL, migrationsDir)
+		m, err := storage.NewMigratorBuilder().Build(dbURL, migrationsDir)
 		if err != nil {
 			log.Fatalf("failed to create migrattor: %v", err)
 		}
@@ -35,13 +35,13 @@ func main() {
 		switch cmd {
 		case "up":
 			if err := m.Up(); err != nil {
-				log.Printf("goose up failed: %v", err)
+				log.Printf("goose up failed: %v\n", err)
 				return 1
 			}
 			log.Println("Migrations applied successfully!")
 		case "down":
 			if err := m.Down(); err != nil {
-				log.Printf("goose down failed: %v", err)
+				log.Printf("goose down failed: %v\n", err)
 				return 1
 			}
 			log.Println("Migration rolled back successfully!")

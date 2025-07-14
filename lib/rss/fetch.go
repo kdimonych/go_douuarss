@@ -5,17 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
+
+	"github.com/kdimonych/go_douuarss/lib/common"
 )
 
 func Fetch(ctx context.Context, urlStr string) ([]byte, error) {
-	if urlStr == "" {
-		urlStr = "https://dou.ua/feed/"
-	}
-
-	parsed, err := url.Parse(urlStr)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return nil, &FetchError{Code: ErrorCodeUnreachable, Details: fmt.Errorf("invalid URL: %s", urlStr)}
+	err := common.ValidateURL(urlStr)
+	if err != nil {
+		return nil, &FetchError{Code: ErrorCodeInvalidUrl, Details: err}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, http.NoBody)
@@ -40,3 +37,5 @@ func Fetch(ctx context.Context, urlStr string) ([]byte, error) {
 
 	return body, nil
 }
+
+// ================ Private methods ===================

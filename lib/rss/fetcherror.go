@@ -6,6 +6,7 @@ const (
 	ErrorCodeUnreachable = iota
 	ErrorCodeHttpError
 	ErrorCodeNoData
+	ErrorCodeInvalidUrl
 )
 
 func (e ErrorCode) String() string {
@@ -16,6 +17,8 @@ func (e ErrorCode) String() string {
 		return "HTTP error"
 	case ErrorCodeNoData:
 		return "No data received"
+	case ErrorCodeInvalidUrl:
+		return "Invalid URL"
 	default:
 		return "Unknown error"
 	}

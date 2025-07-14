@@ -1,12 +1,20 @@
 -- +goose Up
 -- +goose StatementBegin
+CREATE TABLE IF NOT EXISTS feeds (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    url TEXT UNIQUE
+);
+
 CREATE TABLE IF NOT EXISTS channels (
     id SERIAL PRIMARY KEY,
     title TEXT UNIQUE,
     link TEXT,
     description TEXT,
     language TEXT,
-    last_build_date TIMESTAMPTZ
+    last_build_date TIMESTAMPTZ,
+    feed_id INTEGER NOT NULL REFERENCES feeds(id) ON DELETE CASCADE,
+    hash TEXT UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS items (
@@ -23,6 +31,7 @@ CREATE TABLE IF NOT EXISTS items (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE items;
-DROP TABLE channels;
+DROP TABLE IF EXISTS items;
+DROP TABLE IF EXISTS channels;
+DROP TABLE IF EXISTS feeds;
 -- +goose StatementEnd

@@ -37,14 +37,25 @@ func TestSaveCannel(t *testing.T) {
 		t.Fatal("Expected at least one channel")
 	}
 
-	dbURL := "postgres://go_douuarss:go_douuarss@localhost:5432/go_douuarss?sslmode=disable"
-	s, err := NewStorage(dbURL)
+	dbURL := testDBURL
+	s, err := NewStorageBuilder().Build(dbURL)
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
 	defer s.Close()
 
-	id, err := s.InsertOrMergeChannel(&channels[0])
+	feedId, err := s.AddFeed(&Feed{
+		Name: "Test Feed",
+		Url:  testFeedUrl,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to add feed: %v", err)
+	}
+
+	channel := ChannelFromRSS(&channels[0])
+
+	id, err := s.InsertOrMergeChannel(feedId, &channel)
 	if err != nil {
 		t.Fatalf("Failed to insert or merge channel: %v", err)
 	}
@@ -71,14 +82,25 @@ func TestSaveCannelWithRealData(t *testing.T) {
 		t.Fatal("Expected at least one channel")
 	}
 
-	dbURL := "postgres://go_douuarss:go_douuarss@localhost:5432/go_douuarss?sslmode=disable"
-	s, err := NewStorage(dbURL)
+	dbURL := testDBURL
+	s, err := NewStorageBuilder().Build(dbURL)
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
 	defer s.Close()
 
-	id, err := s.InsertOrMergeChannel(&channels[0])
+	feedId, err := s.AddFeed(&Feed{
+		Name: "Test Feed",
+		Url:  testFeedUrl,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to add feed: %v", err)
+	}
+
+	channel := ChannelFromRSS(&channels[0])
+
+	id, err := s.InsertOrMergeChannel(feedId, &channel)
 	if err != nil {
 		t.Fatalf("Failed to insert or merge channel: %v", err)
 	}
