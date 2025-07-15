@@ -24,10 +24,6 @@ func TestRealRssProvider(t *testing.T) {
 		t.Fatalf("failed to create RealRssProvider: %v", err)
 	}
 	defer provider.Stop()
-	err = provider.Start(wg, ctx)
-	if err != nil {
-		t.Fatalf("failed to start RealRssProvider: %v", err)
-	}
 
 	if provider.Url() != rssUrl {
 		t.Fatalf("expected associated URL %s, got %s", rssUrl, provider.Url())
@@ -37,10 +33,25 @@ func TestRealRssProvider(t *testing.T) {
 		t.Fatalf("expected provider ID %v, got %v", testProviderId, provider.Id())
 	}
 
+	err = provider.Start(wg, ctx)
+	if err != nil {
+		t.Fatalf("failed to start RealRssProvider: %v", err)
+	}
+
+	if !provider.IsActive() {
+		t.Fatal("expected provider to be active after Start")
+	}
+
 	select {
 	case msg := <-channel:
 		fmt.Printf("Received channel: %s\n", msg.Channel.Title)
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timeout waiting for channel message")
+	}
+
+	provider.Stop()
+
+	if provider.IsActive() {
+		t.Fatal("expected provider to be inactive after Stop")
 	}
 }

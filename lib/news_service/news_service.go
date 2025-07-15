@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/kdimonych/go_douuarss/lib/common"
 	"github.com/kdimonych/go_douuarss/lib/rss"
 	"github.com/kdimonych/go_douuarss/lib/storage"
 )
@@ -15,10 +16,18 @@ type Config struct {
 	MigrationsDir string
 }
 
+type FeedId storage.FeedId
+
+const (
+	InvalidFeedId FeedId = FeedId(storage.InvalidFeedId)
+)
+
 type NewsService interface {
 	Init() error
 	Start(externalWg *sync.WaitGroup, parentCtx context.Context) error
 	Stop()
+
+	AddRssFeed(urlStr string) (FeedId, error)
 }
 
 type newsServiceImpl struct {
@@ -160,6 +169,29 @@ func (b *newsServiceBuilderImpl) Build(config *Config) (NewsService, error) {
 // ===== NewsService Implementation =====
 func (*newsServiceImpl) Init() error {
 	return nil
+}
+
+func (srv *newsServiceImpl) AddRssFeed(urlStr string) (FeedId, error) {
+	err := common.ValidateURL(urlStr)
+	if err != nil {
+		return InvalidFeedId, fmt.Errorf("invalid RSS feed URL: %w", err)
+	}
+
+	feed := &storage.Feed{
+		Url: urlStr,
+	}
+	feedId, err := srv.storageSrv.AddFeed(feed)
+	if err != nil {
+		return InvalidFeedId, fmt.Errorf("failed to add feed to storage: %w", err)
+	}
+
+	err = srv.rssClientService.AddRssFeedProvider(rss.RssProviderId(feed.Id), feed.Url)
+	if err != nil {
+		return InvalidFeedId, fmt.Errorf("unable to add RSS feed provider for %s (id: %v): %w", feed.Url, feed.Id, err)
+	}
+
+	log.Printf("Added new RSS feed with ID %d: %s\n", feedId, urlStr)
+	return FeedId(feedId), nil
 }
 
 func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.Context) error {

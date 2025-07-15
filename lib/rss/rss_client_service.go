@@ -11,14 +11,16 @@ const (
 )
 
 type RssProviderInfo struct {
-	Id  RssProviderId
-	Url string
+	Id     RssProviderId
+	Url    string
+	Active bool
 }
 
 type RssClientService interface {
 	AddRssFeedProvider(id RssProviderId, rssUrl string) error
-	RemoveRssFeedProvider(id RssProviderId) error
-	ListProviders() ([]RssProviderInfo, error)
+	RemoveRssFeedProvider(id RssProviderId)
+	ProviderInfo(id RssProviderId) *RssProviderInfo
+	ListProviders() []RssProviderInfo
 	GetRssMessage() <-chan RssMessage
 	Stop() // Stop stops all RSS providers and cleans up resources.
 }
@@ -66,8 +68,13 @@ func NewRssClientServiceBuilder() RssClientServiceBuilder {
 }
 
 func (service *rssClientServiceImpl) AddRssFeedProvider(id RssProviderId, rssUrl string) error {
-	if _, exists := service.rssProviders[id]; exists {
-		return fmt.Errorf("RSS provider with id %v already exists", id)
+	existedProvider, exists := service.rssProviders[id]
+	if exists && existedProvider.IsActive() {
+		return nil
+	} else if exists {
+		log.Printf("The provider %v exists but not active, remove it and try to add again", id)
+		existedProvider.Stop()
+		delete(service.rssProviders, id)
 	}
 
 	provider, err := service.rssProviderFabric.CreateRssProvider(id, rssUrl, service.messageChannel)
@@ -82,29 +89,41 @@ func (service *rssClientServiceImpl) AddRssFeedProvider(id RssProviderId, rssUrl
 	}
 
 	service.rssProviders[id] = provider
+	log.Printf("Added new RSS provider with ID %v: %s\n", id, rssUrl)
 	return err
 }
 
-func (service *rssClientServiceImpl) RemoveRssFeedProvider(id RssProviderId) error {
+func (service *rssClientServiceImpl) RemoveRssFeedProvider(id RssProviderId) {
 	provider, exists := service.rssProviders[id]
-	if !exists {
-		return fmt.Errorf("RSS provider with id %v does not exist", id)
+	if exists {
+		provider.Stop()
+		delete(service.rssProviders, id)
 	}
-
-	provider.Stop()
-	delete(service.rssProviders, id)
-	return nil
 }
 
-func (service *rssClientServiceImpl) ListProviders() ([]RssProviderInfo, error) {
+func (service *rssClientServiceImpl) ProviderInfo(id RssProviderId) *RssProviderInfo {
+	provider, exists := service.rssProviders[id]
+	if !exists {
+		return nil
+	}
+
+	return &RssProviderInfo{
+		Id:     provider.Id(),
+		Url:    provider.Url(),
+		Active: provider.IsActive(),
+	}
+}
+
+func (service *rssClientServiceImpl) ListProviders() []RssProviderInfo {
 	var providers []RssProviderInfo
 	for id, provider := range service.rssProviders {
 		providers = append(providers, RssProviderInfo{
-			Id:  id,
-			Url: provider.Url(),
+			Id:     id,
+			Url:    provider.Url(),
+			Active: provider.IsActive(),
 		})
 	}
-	return providers, nil
+	return providers
 }
 
 func (service *rssClientServiceImpl) GetRssMessage() <-chan RssMessage {

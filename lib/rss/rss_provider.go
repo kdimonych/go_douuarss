@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kdimonych/go_douuarss/lib/common"
@@ -28,6 +29,7 @@ type RssProvider interface {
 	Stop()                                                       // Stop stops the provider and cleans up resources.
 	Url() string
 	Id() RssProviderId
+	IsActive() bool // IsStarted checks if the provider is currently running.
 }
 
 type rssProviderImpl struct {
@@ -38,6 +40,7 @@ type rssProviderImpl struct {
 	wg         *sync.WaitGroup
 	externalWg *sync.WaitGroup // Optional external WaitGroup to manage the lifecycle of the connection
 	rssUrl     string
+	active     atomic.Bool
 }
 
 func (provider *rssProviderImpl) Start(externalWg *sync.WaitGroup, ctx context.Context) error {
@@ -76,6 +79,10 @@ func (provider *rssProviderImpl) Url() string {
 
 func (provider *rssProviderImpl) Id() RssProviderId {
 	return provider.id
+}
+
+func (provider *rssProviderImpl) IsActive() bool {
+	return provider.active.Load()
 }
 
 type RssProviderFabric interface {
@@ -118,7 +125,6 @@ func NewRssProviderFabric() RssProviderFabric {
 }
 
 // ================== Private methods ===================
-
 func (provider *rssProviderImpl) tryFetchAndParse() ([]Channel, error) {
 	channels, err := FetchAndParse(provider.ctx, provider.rssUrl)
 	if err != nil {
@@ -143,6 +149,7 @@ func (provider *rssProviderImpl) worker() {
 	defer func() {
 		provider.wg.Done()
 		provider.externalWg.Done()
+		provider.active.Store(false) // Mark the provider as inactive
 	}()
 
 	for {
@@ -186,7 +193,7 @@ func (provider *rssProviderImpl) startRssProvider() error {
 	// Use a WaitGroup to manage the worker goroutine
 	provider.wg.Add(1)
 	provider.externalWg.Add(1)
-
+	provider.active.Store(true) // Mark the provider as inactive
 	// Start the worker goroutine to fetch RSS feeds
 	go provider.worker()
 	return nil

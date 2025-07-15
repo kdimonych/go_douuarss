@@ -15,9 +15,15 @@ func main() {
 		log.Panic("DATABASE_URL is not set")
 	}
 
+	migrationsDir := os.Getenv("MIGRATIONS_DIR")
+	if migrationsDir == "" {
+		migrationsDir = "/app/migrations"
+		log.Printf("MIGRATIONS_DIR is not set. Use default value: %s", migrationsDir)
+	}
+
 	config := &news_service.Config{
 		DatabaseURL:   dbURL,
-		MigrationsDir: "./migrations",
+		MigrationsDir: migrationsDir,
 	}
 
 	service, err := news_service.NewNewsServiceBuilder().Build(config)
@@ -30,8 +36,9 @@ func main() {
 	}
 
 	waitGroup := &sync.WaitGroup{}
+	ctx := context.Background()
 
-	if err := service.Start(waitGroup, context.Background()); err != nil {
+	if err := service.Start(waitGroup, ctx); err != nil {
 		log.Panicf("Unable to start news service: %v", err)
 	}
 

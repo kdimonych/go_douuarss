@@ -6,6 +6,7 @@ x-go-service-base: &go-service-base
   working_dir: /app
   environment:
     DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+    MIGRATIONS_DIR: /app/migrations
 
 # Base migration service configuration
 x-goose-base: &goose-base
@@ -18,7 +19,7 @@ x-goose-base: &goose-base
     - postgres
   volumes:
     - ${GOOSE_MIGRATE_PATH}:/app
-    - ./lib/storage/migrations:/app/migrations
+    - ${MGRATIONS_PATH}:/app/migrations
 
 # The services section defines the services that will be run in the Docker Compose environment.
 services:
@@ -40,6 +41,7 @@ services:
 
   # GOOSE migration services configurations
   goose-migrate:
+    profiles: ["manual"]
     container_name: goose_migrate
     <<: *goose-base
     command: ["go", "run", "main.go", "up", "-migrations=./migrations"]
@@ -62,9 +64,9 @@ services:
       context: ${NEWS_CHECKER_PATH}
     depends_on:
       - postgres
-      - goose-migrate
     volumes:
       - ${NEWS_CHECKER_PATH}:/app
+      - ${MGRATIONS_PATH}:/app/migrations
     command: ["go", "run", "main.go"]
 
 volumes:
