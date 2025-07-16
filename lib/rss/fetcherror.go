@@ -7,6 +7,8 @@ const (
 	ErrorCodeHttpError
 	ErrorCodeNoData
 	ErrorCodeInvalidUrl
+	ErrorCodeInternalError
+	ErrorCodeInvalidData
 )
 
 func (e ErrorCode) String() string {
@@ -19,6 +21,10 @@ func (e ErrorCode) String() string {
 		return "No data received"
 	case ErrorCodeInvalidUrl:
 		return "Invalid URL"
+	case ErrorCodeInternalError:
+		return "Internal error"
+	case ErrorCodeInvalidData:
+		return "Invalid data"
 	default:
 		return "Unknown error"
 	}

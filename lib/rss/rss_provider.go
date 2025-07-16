@@ -41,6 +41,8 @@ type rssProviderImpl struct {
 	externalWg *sync.WaitGroup // Optional external WaitGroup to manage the lifecycle of the connection
 	rssUrl     string
 	active     atomic.Bool
+
+	fetchClient FetchClient
 }
 
 func (provider *rssProviderImpl) Start(externalWg *sync.WaitGroup, ctx context.Context) error {
@@ -86,15 +88,27 @@ func (provider *rssProviderImpl) IsActive() bool {
 }
 
 type RssProviderFabric interface {
+	SetFetchClient(fetchClient FetchClient) RssProviderFabric
 	CreateRssProvider(
 		id RssProviderId,
 		rssUrl string,
 		messageOut chan<- RssMessage) (RssProvider, error)
 }
 
-type rssProviderFabric struct{}
+type rssProviderFabric struct {
+	fetchClient FetchClient
+}
 
-func (*rssProviderFabric) CreateRssProvider(
+func (f *rssProviderFabric) SetFetchClient(fetchClient FetchClient) RssProviderFabric {
+	if fetchClient == nil {
+		log.Println("Nil FetchClient provided. Using default FetchClient")
+		fetchClient = NewFetchClientBuilder().Build()
+	}
+	f.fetchClient = fetchClient
+	return f
+}
+
+func (f *rssProviderFabric) CreateRssProvider(
 	id RssProviderId,
 	rssUrl string,
 	messageOut chan<- RssMessage,
@@ -107,13 +121,14 @@ func (*rssProviderFabric) CreateRssProvider(
 		return nil, fmt.Errorf("messageOut channel cannot be nil")
 	}
 	rssProviderHandle := &rssProviderImpl{
-		id:         id,
-		messageOut: messageOut,
-		cancel:     nil,
-		ctx:        nil,
-		wg:         &sync.WaitGroup{},
-		externalWg: nil,
-		rssUrl:     rssUrl,
+		id:          id,
+		messageOut:  messageOut,
+		cancel:      nil,
+		ctx:         nil,
+		wg:          &sync.WaitGroup{},
+		externalWg:  nil,
+		rssUrl:      rssUrl,
+		fetchClient: f.fetchClient,
 	}
 
 	return rssProviderHandle, nil
@@ -121,12 +136,14 @@ func (*rssProviderFabric) CreateRssProvider(
 
 // NewRssProviderFabric creates a new instance of RssProviderFabric.
 func NewRssProviderFabric() RssProviderFabric {
-	return &rssProviderFabric{}
+	return &rssProviderFabric{
+		fetchClient: NewFetchClientBuilder().Build(),
+	}
 }
 
 // ================== Private methods ===================
 func (provider *rssProviderImpl) tryFetchAndParse() ([]Channel, error) {
-	channels, err := FetchAndParse(provider.ctx, provider.rssUrl)
+	channels, err := FetchAndParse(provider.fetchClient, provider.ctx, provider.rssUrl)
 	if err != nil {
 		// Handle unrecoverable errors
 		if fetchErr, ok := err.(*FetchError); ok {

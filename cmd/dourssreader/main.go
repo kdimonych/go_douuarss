@@ -10,7 +10,7 @@ import (
 func main() {
 	url := "https://dou.ua/feed/"
 	ctx := context.Background() // or use a timeout: context.WithTimeout(...)
-	channels, err := rss.FetchAndParse(ctx, url)
+	channels, err := rss.FetchAndParse(rss.NewFetchClientBuilder().Build(), ctx, url)
 	if err != nil {
 		fmt.Printf("Error fetching and parsing RSS feed: %v\n", err)
 		return

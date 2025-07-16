@@ -13,6 +13,9 @@ func TestErrorCode_String(t *testing.T) {
 		{ErrorCodeUnreachable, "Unreachable URL"},
 		{ErrorCodeHttpError, "HTTP error"},
 		{ErrorCodeNoData, "No data received"},
+		{ErrorCodeInvalidUrl, "Invalid URL"},
+		{ErrorCodeInternalError, "Internal error"},
+		{ErrorCodeInvalidData, "Invalid data"},
 		{999, "Unknown error"}, // Test for an unknown error code
 	}
 
@@ -33,6 +36,9 @@ func TestFetchError_Error(t *testing.T) {
 		{&FetchError{ErrorCodeUnreachable, fmt.Errorf("failed to fetch data")}, "Unreachable URL"},
 		{&FetchError{ErrorCodeHttpError, fmt.Errorf("HTTP error ocured, Status: 404")}, "HTTP error"},
 		{&FetchError{ErrorCodeNoData, fmt.Errorf("server returned no data")}, "No data received"},
+		{&FetchError{ErrorCodeInvalidUrl, fmt.Errorf("invalid URL")}, "Invalid URL"},
+		{&FetchError{ErrorCodeInternalError, fmt.Errorf("something goes wrong")}, "Internal error"},
+		{&FetchError{ErrorCodeInvalidData, fmt.Errorf("data format is invalid")}, "Invalid data"},
 	}
 
 	for _, test := range tests {
@@ -52,6 +58,9 @@ func TestFetchError_Unwrap(t *testing.T) {
 		{&FetchError{ErrorCodeUnreachable, fmt.Errorf("failed to fetch data")}, "failed to fetch data"},
 		{&FetchError{ErrorCodeHttpError, fmt.Errorf("HTTP error ocured, Status: 404")}, "HTTP error ocured, Status: 404"},
 		{&FetchError{ErrorCodeNoData, fmt.Errorf("server returned no data")}, "server returned no data"},
+		{&FetchError{ErrorCodeInvalidUrl, fmt.Errorf("invalid URL")}, "invalid URL"},
+		{&FetchError{ErrorCodeInternalError, fmt.Errorf("something goes wrong")}, "something goes wrong"},
+		{&FetchError{ErrorCodeInvalidData, fmt.Errorf("data format is invalid")}, "data format is invalid"},
 	}
 
 	for _, test := range tests {

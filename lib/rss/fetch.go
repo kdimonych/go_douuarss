@@ -4,12 +4,51 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/kdimonych/go_douuarss/lib/common"
 )
 
-func Fetch(ctx context.Context, urlStr string) ([]byte, error) {
+type FetchClient interface {
+	Fetch(ctx context.Context, urlStr string) ([]byte, error)
+}
+
+type fetchClientImpl struct {
+	httpClient *http.Client
+}
+
+type FetchClientBuilder interface {
+	WithHttpClient(client *http.Client) FetchClientBuilder
+	Build() FetchClient
+}
+
+type fetchClientBuilderImpl struct {
+	httpClient *http.Client
+}
+
+func NewFetchClientBuilder() FetchClientBuilder {
+	return &fetchClientBuilderImpl{
+		httpClient: http.DefaultClient,
+	}
+}
+
+func (b *fetchClientBuilderImpl) WithHttpClient(client *http.Client) FetchClientBuilder {
+	if client == nil {
+		log.Printf("FetchClientBuilder: provided http client is nil, using default http client")
+		client = http.DefaultClient
+	}
+	b.httpClient = client
+	return b
+}
+
+func (b *fetchClientBuilderImpl) Build() FetchClient {
+	return &fetchClientImpl{
+		httpClient: b.httpClient,
+	}
+}
+
+func (c *fetchClientImpl) Fetch(ctx context.Context, urlStr string) ([]byte, error) {
 	err := common.ValidateURL(urlStr)
 	if err != nil {
 		return nil, &FetchError{Code: ErrorCodeInvalidUrl, Details: err}
@@ -20,7 +59,7 @@ func Fetch(ctx context.Context, urlStr string) ([]byte, error) {
 		return nil, &FetchError{Code: ErrorCodeUnreachable, Details: err}
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, &FetchError{Code: ErrorCodeUnreachable, Details: err}
 	}

@@ -1,7 +1,12 @@
 package rss
 
 import (
+	"context"
+	"io"
+	"log"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -92,6 +97,23 @@ func TestParse(t *testing.T) {
 }
 
 func TestParseRealFeed(t *testing.T) {
+	badBlob := []byte(`Bad XML Data`)
+
+	_, err := Parse(badBlob)
+	if err == nil {
+		t.Fatalf("Expected parse error, got nil")
+	}
+
+	if fetchErr, ok := err.(*FetchError); ok {
+		if fetchErr.Code != ErrorCodeInvalidData {
+			t.Fatalf("Expected error code %d, got %d", ErrorCodeInvalidData, fetchErr.Code)
+		}
+	} else {
+		t.Fatalf("Expected FetchError, got %T: %v", err, err)
+	}
+}
+
+func TestParse_BadData(t *testing.T) {
 	data, err := os.ReadFile("testdata/test_real_rss_blob.xml")
 	if err != nil {
 		t.Fatalf("Failed to read test data: %v", err)
@@ -103,5 +125,112 @@ func TestParseRealFeed(t *testing.T) {
 
 	if len(channels) == 0 {
 		t.Fatal("Expected at least one channel")
+	}
+}
+
+func TestFetchAndParse(t *testing.T) {
+	ctx := context.Background()
+
+	data, err := os.ReadFile("testdata/test_real_rss_blob.xml")
+	if err != nil {
+		t.Fatalf("Failed to read test data: %v", err)
+	}
+
+	mockResp := &http.Response{
+		StatusCode: 200,
+		Body:       io.NopCloser(strings.NewReader(string(data))),
+	}
+
+	client := &http.Client{
+		Transport: &mockRoundTripper{resp: mockResp, err: nil},
+	}
+
+	fetchClient := NewFetchClientBuilder().WithHttpClient(client).Build()
+
+	channels, err := FetchAndParse(fetchClient, ctx, testUrl)
+	if err != nil {
+		t.Fatalf("Failed to fetch and parse RSS feed: %v", err)
+	}
+
+	if len(channels) == 0 {
+		t.Fatal("No channels found in the RSS feed")
+	}
+
+	log.Printf("Fetched %d channels from %s", len(channels), testUrl)
+	for _, channel := range channels {
+		log.Printf("Channel: %s", channel.Title)
+	}
+}
+
+func TestFetchAndParse_NoFetchClient(t *testing.T) {
+	ctx := context.Background()
+
+	_, err := FetchAndParse(nil, ctx, testUrl)
+	if err == nil {
+		t.Fatalf("Expected error when fetch client is nil, got nil")
+	}
+
+	if fetchErr, ok := err.(*FetchError); ok {
+		if fetchErr.Code != ErrorCodeInternalError {
+			t.Fatalf("Expected error code %d, got %d", ErrorCodeInternalError, fetchErr.Code)
+		}
+	} else {
+		t.Fatalf("Expected FetchError, got %T: %v", err, err)
+	}
+}
+
+func TestFetchAndParse_FetchError(t *testing.T) {
+	ctx := context.Background()
+
+	mockResp := &http.Response{
+		StatusCode: 404,
+		Body:       io.NopCloser(strings.NewReader("404 Not Found")),
+	}
+
+	client := &http.Client{
+		Transport: &mockRoundTripper{resp: mockResp, err: nil},
+	}
+
+	fetchClient := NewFetchClientBuilder().WithHttpClient(client).Build()
+
+	_, err := FetchAndParse(fetchClient, ctx, testUrl)
+	if err == nil {
+		t.Fatalf("Expected error when fetch client is nil, got nil")
+	}
+
+	if fetchErr, ok := err.(*FetchError); ok {
+		if fetchErr.Code != ErrorCodeHttpError {
+			t.Fatalf("Expected error code %d, got %d", ErrorCodeHttpError, fetchErr.Code)
+		}
+	} else {
+		t.Fatalf("Expected FetchError, got %T: %v", err, err)
+	}
+}
+
+func TestFetchAndParse_ParseError(t *testing.T) {
+	ctx := context.Background()
+
+	mockResp := &http.Response{
+		StatusCode: 200,
+		Body:       io.NopCloser(strings.NewReader("Bad XML Data")),
+	}
+
+	client := &http.Client{
+		Transport: &mockRoundTripper{resp: mockResp, err: nil},
+	}
+
+	fetchClient := NewFetchClientBuilder().WithHttpClient(client).Build()
+
+	_, err := FetchAndParse(fetchClient, ctx, testUrl)
+	if err == nil {
+		t.Fatalf("Expected error when fetch client is nil, got nil")
+	}
+
+	if fetchErr, ok := err.(*FetchError); ok {
+		if fetchErr.Code != ErrorCodeInvalidData {
+			t.Fatalf("Expected error code %d, got %d", ErrorCodeInvalidData, fetchErr.Code)
+		}
+	} else {
+		t.Fatalf("Expected FetchError, got %T: %v", err, err)
 	}
 }
