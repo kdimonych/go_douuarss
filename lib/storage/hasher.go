@@ -25,9 +25,6 @@ type defaultChannelHasherImpl struct{}
 
 func (*defaultChannelHasherImpl) Hash(channel *Channel) string {
 	hash := strings.ToLower(channel.Title) + "_" + channel.LastBuildDate.String()
-	for _, item := range channel.Items {
-		hash += "_" + item.Title + "_" + item.PubDate.String()
-	}
 	return hash
 }
 
