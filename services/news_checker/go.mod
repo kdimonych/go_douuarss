@@ -5,7 +5,7 @@ go 1.24.3
 replace github.com/kdimonych/go_douuarss/lib => ../../lib
 
 require (
-	github.com/kdimonych/go_douuarss/lib v0.0.0-20250625160124-99508dcd918d
+	github.com/kdimonych/go_douuarss/lib v1.0.11
 	github.com/spf13/cobra v1.9.1
 )
 
