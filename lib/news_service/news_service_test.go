@@ -30,7 +30,7 @@ func TestNewsServiceBuilder(t *testing.T) {
 		log.Panicf("[Panic] Unable to initialize news service: %v", err)
 	}
 
-	feedId, Err := service.AddRssFeed(testFeedUrl)
+	feedId, Err := service.RegisterRssFeed(testFeedUrl)
 	if Err != nil {
 		log.Panicf("[Panic] Unable to add RSS feed: %v", Err)
 	}

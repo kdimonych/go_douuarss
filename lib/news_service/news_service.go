@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 
 	"github.com/kdimonych/go_douuarss/lib/common"
 	"github.com/kdimonych/go_douuarss/lib/rss"
@@ -17,9 +18,11 @@ type Config struct {
 }
 
 type FeedId storage.FeedId
+type ActiveProvidersNumber int
 
 const (
-	InvalidFeedId FeedId = FeedId(storage.InvalidFeedId)
+	InvalidFeedId          FeedId                = FeedId(storage.InvalidFeedId)
+	InvalidProvidersNumber ActiveProvidersNumber = 0
 )
 
 type NewsService interface {
@@ -27,7 +30,11 @@ type NewsService interface {
 	Start(externalWg *sync.WaitGroup, parentCtx context.Context) error
 	Stop()
 
-	AddRssFeed(urlStr string) (FeedId, error)
+	IsActive() bool // IsStarted checks if the service is currently running.
+
+	RegisterRssFeed(urlStr string) (FeedId, error)
+
+	StartRssProviders() (ActiveProvidersNumber, error)
 }
 
 type newsServiceImpl struct {
@@ -38,6 +45,7 @@ type newsServiceImpl struct {
 	ctx        context.Context
 	wg         *sync.WaitGroup
 	externalWg *sync.WaitGroup
+	isActive   atomic.Bool
 }
 
 type NewsServiceBuilder interface {
@@ -163,6 +171,7 @@ func (b *newsServiceBuilderImpl) Build(config *Config) (NewsService, error) {
 		rssClientService: rssClientService,
 		wg:               &sync.WaitGroup{},
 		externalWg:       nil,
+		isActive:         atomic.Bool{},
 	}, nil
 }
 
@@ -171,7 +180,7 @@ func (*newsServiceImpl) Init() error {
 	return nil
 }
 
-func (srv *newsServiceImpl) AddRssFeed(urlStr string) (FeedId, error) {
+func (srv *newsServiceImpl) RegisterRssFeed(urlStr string) (FeedId, error) {
 	err := common.ValidateURL(urlStr)
 	if err != nil {
 		return InvalidFeedId, fmt.Errorf("invalid RSS feed URL: %w", err)
@@ -185,13 +194,39 @@ func (srv *newsServiceImpl) AddRssFeed(urlStr string) (FeedId, error) {
 		return InvalidFeedId, fmt.Errorf("failed to add feed to storage: %w", err)
 	}
 
-	err = srv.rssClientService.AddRssFeedProvider(rss.RssProviderId(feed.Id), feed.Url)
+	log.Printf("[Info] Registered new RSS feed with ID %d: %s\n", feedId, urlStr)
+	return FeedId(feedId), nil
+}
+
+func (srv *newsServiceImpl) StartRssProviders() (ActiveProvidersNumber, error) {
+	feeds, err := srv.storageSrv.GetFeedsOnly()
 	if err != nil {
-		return InvalidFeedId, fmt.Errorf("unable to add RSS feed provider for %s (id: %v): %w", feed.Url, feed.Id, err)
+		return InvalidProvidersNumber, fmt.Errorf("unable to get feeds from storage: %w", err)
 	}
 
-	log.Printf("[Info] Added new RSS feed with ID %d: %s\n", feedId, urlStr)
-	return FeedId(feedId), nil
+	log.Printf("[Info] Found %d feeds in storage, starting providers...\n", len(feeds))
+
+	// Start fetching news from RSS feeds
+	activeCount := 0
+	for _, feed := range feeds {
+		// Validate the feed URL before adding it.
+		// Just in case the requirements changed, but the feed is still in the database.
+		err := common.ValidateURL(feed.Url)
+		if err != nil {
+			log.Printf("[Error] invalid RSS feed URL: %v", common.UnwrapAll(err))
+			continue
+		}
+
+		log.Printf("[Info] : %s\n", feed.Url)
+		err = srv.rssClientService.AddRssFeedProvider(rss.RssProviderId(feed.Id), feed.Url)
+		if err != nil {
+			log.Printf("[Error] Unable to start RSS feed provider for %s (id: %v): %v\n", feed.Url, feed.Id, common.UnwrapAll(err))
+			continue
+		}
+		activeCount++
+	}
+
+	return ActiveProvidersNumber(activeCount), nil
 }
 
 func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.Context) error {
@@ -216,27 +251,18 @@ func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.
 	srv.ctx = ctx
 	srv.cancel = cancel
 
-	feeds, err := srv.storageSrv.GetFeedsOnly()
+	activeProviders, err := srv.StartRssProviders()
 	if err != nil {
-		return fmt.Errorf("unable to get feeds from storage: %w", err)
+		return fmt.Errorf("failed to start RSS providers: %w", err)
 	}
 
-	log.Printf("[Info] Found %d feeds in storage, starting to fetch news...\n", len(feeds))
-	if len(feeds) == 0 {
-		log.Println("[Info] No feeds found in storage, nothing to fetch")
+	if activeProviders == 0 {
+		log.Println("[Info] No active RSS providers started, nothing to fetch")
 		log.Println("[Info] Stopping news service...")
 		return nil
 	}
 
-	// Start fetching news from RSS feeds
-	for _, feed := range feeds {
-		log.Printf("[Info] Starting to fetch news for feed: %s\n", feed.Url)
-		err = srv.rssClientService.AddRssFeedProvider(rss.RssProviderId(feed.Id), feed.Url)
-		if err != nil {
-			log.Printf("[Error] Unable to add RSS feed provider for %s (id: %v): %v\n", feed.Url, feed.Id, common.UnwrapAll(err))
-			continue
-		}
-	}
+	log.Printf("[Info] Started %d RSS providers\n", activeProviders)
 
 	srv.wg.Add(1)
 	srv.externalWg.Add(1)
@@ -247,17 +273,16 @@ func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.
 }
 
 func (srv *newsServiceImpl) Stop() {
-	if srv.cancel != nil {
-		// Stop the RSS client service before stopping the news service
-		srv.rssClientService.Stop()
+	// Stop the RSS client service before stopping the news service
+	srv.rssClientService.Stop()
 
+	if srv.cancel != nil {
 		srv.cancel()
 		srv.wg.Wait()    // Wait for the worker goroutine to finish
 		srv.cancel = nil // Clear the cancel function to avoid double cancellation
-
-		srv.storageSrv.Close()
 	}
 
+	srv.storageSrv.Close()
 	log.Println("[Info] News service stopped successfully")
 }
 
@@ -290,6 +315,10 @@ func (srv *newsServiceImpl) processRssMessage(msg *rss.RssMessage) {
 			common.UnwrapAll(err))
 		return
 	}
+}
+
+func (srv *newsServiceImpl) IsActive() bool {
+	return srv.isActive.Load()
 }
 
 func (srv *newsServiceImpl) worker() {

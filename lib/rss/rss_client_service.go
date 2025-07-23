@@ -70,6 +70,7 @@ func NewRssClientServiceBuilder() RssClientServiceBuilder {
 func (service *rssClientServiceImpl) AddRssFeedProvider(id RssProviderId, rssUrl string) error {
 	existedProvider, exists := service.rssProviders[id]
 	if exists && existedProvider.IsActive() {
+		log.Printf("[Info] The provider %v is already active", id)
 		return nil
 	} else if exists {
 		log.Printf("[Info] The provider %v exists but not active, remove it and try to add again", id)
