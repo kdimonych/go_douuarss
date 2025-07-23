@@ -23,23 +23,23 @@ func TestNewsServiceBuilder(t *testing.T) {
 
 	service, err := NewNewsServiceBuilder().Build(config)
 	if err != nil {
-		log.Panicf("Unable to initialize news service: %v", err)
+		log.Panicf("[Panic] Unable to initialize news service: %v", err)
 	}
 
 	if err := service.Init(); err != nil {
-		log.Panicf("Unable to initialize news service: %v", err)
+		log.Panicf("[Panic] Unable to initialize news service: %v", err)
 	}
 
 	feedId, Err := service.AddRssFeed(testFeedUrl)
 	if Err != nil {
-		log.Panicf("Unable to add RSS feed: %v", Err)
+		log.Panicf("[Panic] Unable to add RSS feed: %v", Err)
 	}
-	log.Printf("Added RSS feed with ID: %d", feedId)
+	log.Printf("[Info] Added RSS feed with ID: %d", feedId)
 
 	waitGroup := &sync.WaitGroup{}
 
 	if err := service.Start(waitGroup, ctx); err != nil {
-		log.Panicf("Unable to start news service: %v", err)
+		log.Panicf("[Panic] Unable to start news service: %v", err)
 	}
 
 	waitGroup.Wait()

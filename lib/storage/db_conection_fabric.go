@@ -31,6 +31,6 @@ func (*dbConectionFabricImpl) CreateDbConnection(driver, dbURL string) (*sql.DB,
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("Database connection established successfully!")
+	log.Println("[Info] Database connection established successfully!")
 	return db, nil
 }

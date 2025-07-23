@@ -26,7 +26,7 @@ func (migrator *migratorImpl) Close() error {
 		if err := migrator.Db.Close(); err != nil {
 			return fmt.Errorf("failed to close database connection: %w", err)
 		}
-		log.Println("Database connection closed successfully!")
+		log.Println("[Info] Database connection closed successfully!")
 	}
 
 	return nil
@@ -41,7 +41,7 @@ func (migrator *migratorImpl) Up() error {
 		return fmt.Errorf("goose up failed: %w", err)
 	}
 
-	log.Println("Migrations applied successfully!")
+	log.Println("[Info] Migrations applied successfully!")
 	return nil
 }
 
@@ -54,7 +54,7 @@ func (migrator *migratorImpl) Down() error {
 		return fmt.Errorf("goose down failed: %w", err)
 	}
 
-	log.Println("Migration rolled back successfully!")
+	log.Println("[Info] Migration rolled back successfully!")
 	return nil
 }
 
@@ -88,7 +88,7 @@ func NewMigratorBuilder() MigratorBuilder {
 
 func (builder *migratorBuilderImpl) WithDbConnectionFabric(dbConnectionFabric DbConectionFabric) MigratorBuilder {
 	if dbConnectionFabric == nil {
-		log.Println("Nil DbConnectionFabric provided. Using default DbConnectionFabric")
+		log.Println("[Warning] Nil DbConnectionFabric provided. Using default DbConnectionFabric")
 		dbConnectionFabric = NewDbConnectionFabric()
 	}
 	builder.dbConnectionFabric = dbConnectionFabric

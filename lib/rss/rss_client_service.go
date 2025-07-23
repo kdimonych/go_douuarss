@@ -72,7 +72,7 @@ func (service *rssClientServiceImpl) AddRssFeedProvider(id RssProviderId, rssUrl
 	if exists && existedProvider.IsActive() {
 		return nil
 	} else if exists {
-		log.Printf("The provider %v exists but not active, remove it and try to add again", id)
+		log.Printf("[Info] The provider %v exists but not active, remove it and try to add again", id)
 		existedProvider.Stop()
 		delete(service.rssProviders, id)
 	}
@@ -84,12 +84,12 @@ func (service *rssClientServiceImpl) AddRssFeedProvider(id RssProviderId, rssUrl
 
 	err = provider.Start(service.externalWg, nil)
 	if err != nil {
-		log.Printf("Failed to start RSS provider %v: %v\n", provider.Id(), err)
+		log.Printf("[Error] Failed to start RSS provider %v: %v\n", provider.Id(), err)
 		return fmt.Errorf("failed to start RSS provider: %w", err)
 	}
 
 	service.rssProviders[id] = provider
-	log.Printf("Added new RSS provider with ID %v: %s\n", id, rssUrl)
+	log.Printf("[Info] Added new RSS provider with ID %v: %s\n", id, rssUrl)
 	return err
 }
 
@@ -145,5 +145,5 @@ func (service *rssClientServiceImpl) Stop() {
 	close(service.messageChannel)
 	service.rssProviders = make(map[RssProviderId]RssProvider)
 
-	log.Println("RSS fetch service stopped successfully")
+	log.Println("[Info] RSS fetch service stopped successfully")
 }

@@ -156,9 +156,9 @@ func TestFetchAndParse(t *testing.T) {
 		t.Fatal("No channels found in the RSS feed")
 	}
 
-	log.Printf("Fetched %d channels from %s", len(channels), testUrl)
+	log.Printf("[Info] Fetched %d channels from %s", len(channels), testUrl)
 	for _, channel := range channels {
-		log.Printf("Channel: %s", channel.Title)
+		log.Printf("[Info] Channel: %s", channel.Title)
 	}
 }
 

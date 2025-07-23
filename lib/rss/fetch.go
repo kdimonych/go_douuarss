@@ -35,7 +35,7 @@ func NewFetchClientBuilder() FetchClientBuilder {
 
 func (b *fetchClientBuilderImpl) WithHttpClient(client *http.Client) FetchClientBuilder {
 	if client == nil {
-		log.Printf("FetchClientBuilder: provided http client is nil, using default http client")
+		log.Printf("[Info] FetchClientBuilder: provided http client is nil, using default http client")
 		client = http.DefaultClient
 	}
 	b.httpClient = client
@@ -56,17 +56,17 @@ func (c *fetchClientImpl) Fetch(ctx context.Context, urlStr string) ([]byte, err
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, http.NoBody)
 	if err != nil {
-		return nil, &FetchError{Code: ErrorCodeUnreachable, Details: err}
+		return nil, &FetchError{Code: ErrorCodeUnreachable, Details: fmt.Errorf("url: %s, err: %w", urlStr, err)}
 	}
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, &FetchError{Code: ErrorCodeUnreachable, Details: err}
+		return nil, &FetchError{Code: ErrorCodeUnreachable, Details: fmt.Errorf("url: %s, err: %w", urlStr, err)}
 	}
 
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return nil, &FetchError{ErrorCodeHttpError, fmt.Errorf("HTTP Status: %s", res.Status)}
+		return nil, &FetchError{ErrorCodeHttpError, fmt.Errorf("HTTP Status: %s, url: %s", res.Status, urlStr)}
 	}
 
 	body, err := io.ReadAll(res.Body)

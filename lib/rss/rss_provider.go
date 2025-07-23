@@ -51,7 +51,7 @@ func (provider *rssProviderImpl) Start(externalWg *sync.WaitGroup, ctx context.C
 	}
 
 	if ctx == nil {
-		log.Printf("[%v] Parent context is nil, using background context\n", provider.id)
+		log.Printf("[%v] [Warning] Parent context is nil, using background context\n", provider.id)
 		ctx = context.Background()
 	}
 
@@ -148,13 +148,13 @@ func (provider *rssProviderImpl) tryFetchAndParse() ([]Channel, error) {
 		// Handle unrecoverable errors
 		if fetchErr, ok := err.(*FetchError); ok {
 			if fetchErr.Code == ErrorCodeInvalidUrl {
-				log.Printf("[%v] Unrecoverable error. Invalid URL: %s\n", provider.id, provider.rssUrl)
+				log.Printf("[%v] [Error] Unrecoverable error. Invalid URL: %s\n", provider.id, provider.rssUrl)
 				return nil, fetchErr
 			}
 		}
 
 		// Log the error and return empty channels
-		log.Printf("[%v]  Error during fetching RSS feed: %s\n", provider.id, err.Error())
+		log.Printf("[%v] [Error] Error during fetching RSS feed: %v\n", provider.id, common.UnwrapAll(err))
 		return []Channel{}, nil
 	}
 
@@ -181,15 +181,15 @@ func (provider *rssProviderImpl) worker() {
 			provider.messageOut <- RssMessage{Channel: channel, Id: provider.id}
 		}
 
-		log.Printf("[%v] Sleep for: %v", provider.id, recheckPeriod)
+		log.Printf("[%v] [Info] Sleep for: %v", provider.id, recheckPeriod)
 		err = sleepWithContext(provider.ctx, recheckPeriod)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
-				log.Printf("[%v] Context canceled, exiting worker", provider.id)
+				log.Printf("[%v] [Warning] Context canceled, exiting worker", provider.id)
 			}
 
 			if errors.Is(err, context.DeadlineExceeded) {
-				log.Printf("[%v] Error during sleep: %s", provider.id, err.Error())
+				log.Printf("[%v] [Error] Error during sleep: %s", provider.id, err.Error())
 			}
 			return
 		}

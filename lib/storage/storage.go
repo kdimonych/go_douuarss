@@ -188,7 +188,11 @@ func (s *storage) addFeed(feed *Feed) (FeedId, error) {
 		feed.Url,
 	).Scan(&id)
 	if err != nil {
-		return InvalidFeedId, err
+		return InvalidFeedId, &StorageError{
+			Code:        ErrorUnableToInsertFeed,
+			Description: "Feed url: " + feed.Url,
+			Details:     err,
+		}
 	}
 
 	return id, nil
@@ -207,7 +211,7 @@ func (s *storage) insertOrReplaceChannel(channel *Channel, feedId FeedId) (Chann
 		RETURNING id;
 	`
 
-	chanelHash := strconv.FormatInt(int64(feedId), 10) + "_" + s.channelHasher.Hash(channel)
+	channelHash := strconv.FormatInt(int64(feedId), 10) + "_" + s.channelHasher.Hash(channel)
 
 	var id ChannelId
 	err := s.Db.QueryRow(
@@ -218,10 +222,13 @@ func (s *storage) insertOrReplaceChannel(channel *Channel, feedId FeedId) (Chann
 		channel.Language,
 		channel.LastBuildDate,
 		feedId,
-		chanelHash,
+		channelHash,
 	).Scan(&id)
 	if err != nil {
-		return InvalidChannelId, err
+		return InvalidChannelId, &StorageError{
+			Code:        ErrorUnableToInsertChannel,
+			Description: "channelHash: " + channelHash,
+			Details:     err}
 	}
 
 	return id, nil
@@ -253,7 +260,11 @@ func (s *storage) insertOrReplaceItem(item *Item, channelId ChannelId) (ItemId, 
 		channelId,
 		itemHash).Scan(&id)
 	if err != nil {
-		return InvalidItemId, err
+		return InvalidItemId, &StorageError{
+			Code:        ErrorUnableToInsertItem,
+			Description: "itemHash: " + itemHash,
+			Details:     err,
+		}
 	}
 
 	return id, nil

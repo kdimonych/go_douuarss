@@ -35,18 +35,18 @@ func main() {
 		switch cmd {
 		case "up":
 			if err := m.Up(); err != nil {
-				log.Printf("goose up failed: %v\n", err)
+				log.Printf("[Error] goose up failed: %v\n", err)
 				return 1
 			}
-			log.Println("Migrations applied successfully!")
+			log.Println("[Info] Migrations applied successfully!")
 		case "down":
 			if err := m.Down(); err != nil {
-				log.Printf("goose down failed: %v\n", err)
+				log.Printf("[Error] goose down failed: %v\n", err)
 				return 1
 			}
-			log.Println("Migration rolled back successfully!")
+			log.Println("[Info] Migration rolled back successfully!")
 		default:
-			fmt.Println("expected 'up' or 'down' subcommands")
+			fmt.Println("[Warning] expected 'up' or 'down' subcommands")
 			return 1
 		}
 		return 0

@@ -190,12 +190,12 @@ func (srv *newsServiceImpl) AddRssFeed(urlStr string) (FeedId, error) {
 		return InvalidFeedId, fmt.Errorf("unable to add RSS feed provider for %s (id: %v): %w", feed.Url, feed.Id, err)
 	}
 
-	log.Printf("Added new RSS feed with ID %d: %s\n", feedId, urlStr)
+	log.Printf("[Info] Added new RSS feed with ID %d: %s\n", feedId, urlStr)
 	return FeedId(feedId), nil
 }
 
 func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.Context) error {
-	log.Println("Starting news service...")
+	log.Println("[Info] Starting news service...")
 
 	if externalWg == nil {
 		return fmt.Errorf("external wait group cannot be nil")
@@ -208,7 +208,7 @@ func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.
 	}
 
 	if parentCtx == nil {
-		log.Println("Parent context is nil, using background context")
+		log.Println("[Warning] Parent context is nil, using background context")
 		parentCtx = context.Background()
 	}
 
@@ -221,14 +221,19 @@ func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.
 		return fmt.Errorf("unable to get feeds from storage: %w", err)
 	}
 
-	log.Printf("Found %d feeds in storage, starting to fetch news...\n", len(feeds))
+	log.Printf("[Info] Found %d feeds in storage, starting to fetch news...\n", len(feeds))
+	if len(feeds) == 0 {
+		log.Println("[Info] No feeds found in storage, nothing to fetch")
+		log.Println("[Info] Stopping news service...")
+		return nil
+	}
 
 	// Start fetching news from RSS feeds
 	for _, feed := range feeds {
-		log.Printf("Starting to fetch news for feed: %s\n", feed.Url)
+		log.Printf("[Info] Starting to fetch news for feed: %s\n", feed.Url)
 		err = srv.rssClientService.AddRssFeedProvider(rss.RssProviderId(feed.Id), feed.Url)
 		if err != nil {
-			log.Printf("Unable to add RSS feed provider for %s (id: %v): %v\n", feed.Url, feed.Id, err)
+			log.Printf("[Error] Unable to add RSS feed provider for %s (id: %v): %v\n", feed.Url, feed.Id, common.UnwrapAll(err))
 			continue
 		}
 	}
@@ -237,7 +242,7 @@ func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.
 	srv.externalWg.Add(1)
 	go srv.worker()
 
-	log.Println("News service started successfully")
+	log.Println("[Info] News service started successfully")
 	return nil
 }
 
@@ -253,7 +258,7 @@ func (srv *newsServiceImpl) Stop() {
 		srv.storageSrv.Close()
 	}
 
-	log.Println("News service stopped successfully")
+	log.Println("[Info] News service stopped successfully")
 }
 
 func (srv *newsServiceImpl) processRssMessage(msg *rss.RssMessage) {
@@ -280,7 +285,9 @@ func (srv *newsServiceImpl) processRssMessage(msg *rss.RssMessage) {
 	channel := storage.ChannelFromRSS(&msg.Channel)
 
 	if _, err := srv.storageSrv.InsertOrMergeChannel(storage.FeedId(msg.Id), &channel); err != nil {
-		log.Printf("Unable to insert or merge channel %s: %v\n", channel.Title, err)
+		log.Printf("[Error] Unable to insert or merge channel:\n\t\"%s\".\n\tDescription: %v\n",
+			channel.Title,
+			common.UnwrapAll(err))
 		return
 	}
 }
@@ -294,7 +301,7 @@ func (srv *newsServiceImpl) worker() {
 	for {
 		select {
 		case <-srv.ctx.Done():
-			log.Printf("Worker context canceled, exiting..., %s\n", srv.ctx.Err().Error())
+			log.Printf("[Warning] Worker context canceled, exiting..., %s\n", srv.ctx.Err().Error())
 			return
 		case msg := <-srv.rssClientService.GetRssMessage():
 			srv.processRssMessage(&msg)
