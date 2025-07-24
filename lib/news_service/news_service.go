@@ -30,10 +30,8 @@ type NewsService interface {
 	Start(externalWg *sync.WaitGroup, parentCtx context.Context) error
 	Stop()
 
-	IsActive() bool // IsStarted checks if the service is currently running.
-
+	IsActive() bool
 	RegisterRssFeed(urlStr string) (FeedId, error)
-
 	StartRssProviders() (ActiveProvidersNumber, error)
 }
 
@@ -264,6 +262,7 @@ func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.
 
 	log.Printf("[Info] Started %d RSS providers\n", activeProviders)
 
+	srv.isActive.Store(true)
 	srv.wg.Add(1)
 	srv.externalWg.Add(1)
 	go srv.worker()
@@ -325,6 +324,8 @@ func (srv *newsServiceImpl) worker() {
 	defer func() {
 		srv.wg.Done()
 		srv.externalWg.Done()
+		srv.isActive.Store(false)
+		log.Println("[Info] Worker goroutine finished")
 	}()
 
 	for {

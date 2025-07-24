@@ -4,7 +4,7 @@ go 1.24.3
 
 replace github.com/kdimonych/go_douuarss/lib => ../../lib
 
-require github.com/kdimonych/go_douuarss/lib v1.0.11
+require github.com/kdimonych/go_douuarss/lib v1.0.12
 
 require (
 	github.com/lib/pq v1.10.9 // indirect
