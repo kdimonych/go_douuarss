@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -33,7 +34,7 @@ func (migrator *migratorImpl) Close() error {
 }
 
 func (migrator *migratorImpl) Up() error {
-	if migrator.Db.Ping() != nil {
+	if migrator.Db.PingContext(context.Background()) != nil {
 		return fmt.Errorf("the DB connection seems to be dead")
 	}
 
@@ -46,7 +47,7 @@ func (migrator *migratorImpl) Up() error {
 }
 
 func (migrator *migratorImpl) Down() error {
-	if migrator.Db.Ping() != nil {
+	if migrator.Db.PingContext(context.Background()) != nil {
 		return fmt.Errorf("the DB connection seems to be dead")
 	}
 
@@ -59,7 +60,7 @@ func (migrator *migratorImpl) Down() error {
 }
 
 func (migrator *migratorImpl) StorageVersion() (int64, error) {
-	if migrator.Db.Ping() != nil {
+	if migrator.Db.PingContext(context.Background()) != nil {
 		return -1, fmt.Errorf("the DB connection seems to be dead")
 	}
 
@@ -73,7 +74,7 @@ func (migrator *migratorImpl) StorageVersion() (int64, error) {
 
 type MigratorBuilder interface {
 	WithDbConnectionFabric(dbConnectionFabric DbConectionFabric) MigratorBuilder
-	Build(dbURL, migrationsDir string) (Migrator, error)
+	Build(ctx context.Context, dbURL, migrationsDir string) (Migrator, error)
 }
 
 type migratorBuilderImpl struct {
@@ -95,7 +96,7 @@ func (builder *migratorBuilderImpl) WithDbConnectionFabric(dbConnectionFabric Db
 	return builder
 }
 
-func (builder *migratorBuilderImpl) Build(dbURL, migrationsDir string) (Migrator, error) {
+func (builder *migratorBuilderImpl) Build(ctx context.Context, dbURL, migrationsDir string) (Migrator, error) {
 	if dbURL == "" {
 		return nil, fmt.Errorf("database URL cannot be empty")
 	}
@@ -104,7 +105,7 @@ func (builder *migratorBuilderImpl) Build(dbURL, migrationsDir string) (Migrator
 		return nil, fmt.Errorf("migration directory cannot be emlpty")
 	}
 
-	db, err := builder.dbConnectionFabric.CreateDbConnection("postgres", dbURL)
+	db, err := builder.dbConnectionFabric.CreateDbConnection(ctx, "postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}

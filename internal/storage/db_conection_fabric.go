@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -8,16 +9,17 @@ import (
 )
 
 type DbConectionFabric interface {
-	CreateDbConnection(driver string, dbURL string) (*sql.DB, error)
+	CreateDbConnection(ctx context.Context, driver string, dbURL string) (*sql.DB, error)
 }
 
-type dbConectionFabricImpl struct{}
+type dbConectionFabricImpl struct {
+}
 
 func NewDbConnectionFabric() DbConectionFabric {
 	return &dbConectionFabricImpl{}
 }
 
-func (*dbConectionFabricImpl) CreateDbConnection(driver, dbURL string) (*sql.DB, error) {
+func (*dbConectionFabricImpl) CreateDbConnection(ctx context.Context, driver, dbURL string) (*sql.DB, error) {
 	if driver == "" || dbURL == "" {
 		return nil, errors.New("driver and dbURL must be provided")
 	}
@@ -27,7 +29,7 @@ func (*dbConectionFabricImpl) CreateDbConnection(driver, dbURL string) (*sql.DB,
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	if err = db.Ping(); err != nil {
+	if err = db.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 

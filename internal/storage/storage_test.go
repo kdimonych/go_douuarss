@@ -1,10 +1,11 @@
 package storage
 
 import (
+	"context"
 	"os"
 	"testing"
 
-	"github.com/kdimonych/go_douuarss/lib/rss"
+	"github.com/kdimonych/go_douuarss/internal/rss"
 )
 
 func TestSaveCannel(t *testing.T) {
@@ -44,7 +45,7 @@ func TestSaveCannel(t *testing.T) {
 	}
 	defer s.Close()
 
-	feedId, err := s.AddFeed(&Feed{
+	feedId, err := s.AddFeed(context.Background(), &Feed{
 		Name: "Test Feed",
 		Url:  testFeedUrl,
 	})
@@ -55,7 +56,7 @@ func TestSaveCannel(t *testing.T) {
 
 	channel := ChannelFromRSS(&channels[0])
 
-	id, err := s.InsertOrMergeChannel(feedId, &channel)
+	id, err := s.InsertOrMergeChannel(context.Background(), feedId, &channel)
 	if err != nil {
 		t.Fatalf("Failed to insert or merge channel: %v", err)
 	}
@@ -89,7 +90,7 @@ func TestSaveCannelWithRealData(t *testing.T) {
 	}
 	defer s.Close()
 
-	feedId, err := s.AddFeed(&Feed{
+	feedId, err := s.AddFeed(context.Background(), &Feed{
 		Name: "Test Feed",
 		Url:  testFeedUrl,
 	})
@@ -100,7 +101,7 @@ func TestSaveCannelWithRealData(t *testing.T) {
 
 	channel := ChannelFromRSS(&channels[0])
 
-	id, err := s.InsertOrMergeChannel(feedId, &channel)
+	id, err := s.InsertOrMergeChannel(context.Background(), feedId, &channel)
 	if err != nil {
 		t.Fatalf("Failed to insert or merge channel: %v", err)
 	}

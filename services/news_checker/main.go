@@ -4,10 +4,12 @@ import (
 	"context"
 	"log"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
-	"github.com/kdimonych/go_douuarss/lib/common"
-	"github.com/kdimonych/go_douuarss/lib/news_service"
+	"github.com/kdimonych/go_douuarss/internal/common"
+	"github.com/kdimonych/go_douuarss/internal/news_service"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +18,7 @@ func mainServiceRun(dbURL, migrationsDir string) {
 		log.Panic("DATABASE_URL is not set")
 	}
 	if migrationsDir == "" {
-		migrationsDir = "/app/migrations"
+		migrationsDir = "/app/internal/storage/migrations"
 		log.Printf("[Error] MIGRATIONS_DIR is not set. Use default value: %s", migrationsDir)
 	}
 
@@ -25,7 +27,9 @@ func mainServiceRun(dbURL, migrationsDir string) {
 		MigrationsDir: migrationsDir,
 	}
 
-	service, err := news_service.NewNewsServiceBuilder().Build(config)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	service, err := news_service.NewNewsServiceBuilder().Build(ctx, config)
 	if err != nil {
 		log.Panicf("[Panic] Unable to initialize news service: %v", err)
 	}
@@ -35,11 +39,20 @@ func mainServiceRun(dbURL, migrationsDir string) {
 	}
 
 	waitGroup := &sync.WaitGroup{}
-	ctx := context.Background()
 
 	if err := service.Start(waitGroup, ctx); err != nil {
 		log.Panicf("[Panic] Unable to start news service: %v", err)
 	}
+
+	// Signal handling
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		log.Println("[Info] Shutdown signal received")
+		cancel() // cancel context to stop service
+	}()
 
 	waitGroup.Wait()
 	service.Stop()
@@ -60,7 +73,7 @@ func registerFeedRun(dbURL, migrationsDir, feedURL string) {
 		MigrationsDir: migrationsDir,
 	}
 
-	service, err := news_service.NewNewsServiceBuilder().Build(config)
+	service, err := news_service.NewNewsServiceBuilder().Build(context.Background(), config)
 	if err != nil {
 		log.Panicf("[Panic] Unable to initialize news service: %v", err)
 	}
@@ -69,7 +82,7 @@ func registerFeedRun(dbURL, migrationsDir, feedURL string) {
 		log.Panicf("[Panic] Unable to initialize news service: %v", err)
 	}
 
-	feedId, err := service.RegisterRssFeed(feedURL)
+	feedId, err := service.RegisterRssFeed(context.Background(), feedURL)
 	if err != nil {
 		log.Panicf("[Panic] Unable to register RSS feed: %v", err)
 	}

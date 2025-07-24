@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/kdimonych/go_douuarss/lib/rss"
+	"github.com/kdimonych/go_douuarss/internal/rss"
 )
 
 func ItemFromRSS(rssItem *rss.Item) Item {

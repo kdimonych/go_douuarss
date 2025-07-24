@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 
-	"github.com/kdimonych/go_douuarss/lib/storage"
+	"github.com/kdimonych/go_douuarss/internal/storage"
 )
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
 	}
 
 	migrate := func() int {
-		m, err := storage.NewMigratorBuilder().Build(dbURL, migrationsDir)
+		m, err := storage.NewMigratorBuilder().Build(context.Background(), dbURL, migrationsDir)
 		if err != nil {
 			log.Fatalf("failed to create migrattor: %v", err)
 		}

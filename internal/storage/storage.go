@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log"
@@ -15,9 +16,9 @@ const InvalidItemId ItemId = 0
 
 type Storage interface {
 	Close() error
-	AddFeed(feed *Feed) (FeedId, error)
-	GetFeedsOnly() ([]Feed, error)
-	InsertOrMergeChannel(feedId FeedId, channel *Channel) (ChannelId, error)
+	AddFeed(ctx context.Context, feed *Feed) (FeedId, error)
+	GetFeedsOnly(ctx context.Context) ([]Feed, error)
+	InsertOrMergeChannel(ctx context.Context, feedId FeedId, channel *Channel) (ChannelId, error)
 	//TODO: GetAll() ([]Feed, error)
 }
 
@@ -31,19 +32,19 @@ func (s *storage) Close() error {
 	return s.Db.Close()
 }
 
-func (s *storage) AddFeed(feed *Feed) (FeedId, error) {
-	if err := s.Db.Ping(); err != nil {
+func (s *storage) AddFeed(ctx context.Context, feed *Feed) (FeedId, error) {
+	if err := s.Db.PingContext(ctx); err != nil {
 		return InvalidFeedId, err
 	}
 
-	id, err := s.addFeed(feed)
+	id, err := s.addFeed(ctx, feed)
 	if err != nil {
 		return InvalidFeedId, err
 	}
 
 	for i := range feed.Channels {
 		channel := &feed.Channels[i]
-		_, err := s.InsertOrMergeChannel(id, channel)
+		_, err := s.InsertOrMergeChannel(ctx, id, channel)
 		if err != nil {
 			log.Println("Unable to insert the channel %w: %w", channel, err)
 			return InvalidFeedId, err
@@ -52,13 +53,13 @@ func (s *storage) AddFeed(feed *Feed) (FeedId, error) {
 	return id, nil
 }
 
-func (s *storage) GetFeedsOnly() ([]Feed, error) {
-	if err := s.Db.Ping(); err != nil {
+func (s *storage) GetFeedsOnly(ctx context.Context) ([]Feed, error) {
+	if err := s.Db.PingContext(ctx); err != nil {
 		return nil, err
 	}
 
 	query := `SELECT id, name, url FROM feeds;`
-	rows, err := s.Db.Query(query)
+	rows, err := s.Db.QueryContext(ctx, query)
 
 	if err != nil {
 		return nil, err
@@ -81,18 +82,18 @@ func (s *storage) GetFeedsOnly() ([]Feed, error) {
 	return feeds, nil
 }
 
-func (s *storage) InsertOrMergeChannel(feedId FeedId, channel *Channel) (ChannelId, error) {
-	if err := s.Db.Ping(); err != nil {
+func (s *storage) InsertOrMergeChannel(ctx context.Context, feedId FeedId, channel *Channel) (ChannelId, error) {
+	if err := s.Db.PingContext(ctx); err != nil {
 		return InvalidChannelId, err
 	}
 
-	id, err := s.insertOrReplaceChannel(channel, feedId)
+	id, err := s.insertOrReplaceChannel(ctx, channel, feedId)
 	if err != nil {
 		return InvalidChannelId, err
 	}
 
 	for _, item := range channel.Items {
-		_, err := s.insertOrReplaceItem(&item, id)
+		_, err := s.insertOrReplaceItem(ctx, &item, id)
 		if err != nil {
 			log.Println("Unable to insert the item %w: %w", item, err)
 			return InvalidChannelId, err
@@ -159,10 +160,6 @@ func (b *storageBuilder) Build(dbURL string) (Storage, error) {
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-
 	return &storage{
 		Db:            db,
 		channelHasher: b.channelHasher,
@@ -172,7 +169,7 @@ func (b *storageBuilder) Build(dbURL string) (Storage, error) {
 
 // ==================== Private methods ====================
 
-func (s *storage) addFeed(feed *Feed) (FeedId, error) {
+func (s *storage) addFeed(ctx context.Context, feed *Feed) (FeedId, error) {
 	query := `
 		INSERT INTO feeds (name, url)
 		VALUES ($1, $2)
@@ -182,7 +179,7 @@ func (s *storage) addFeed(feed *Feed) (FeedId, error) {
 	`
 
 	var id FeedId
-	err := s.Db.QueryRow(
+	err := s.Db.QueryRowContext(ctx,
 		query,
 		feed.Name,
 		feed.Url,
@@ -198,7 +195,7 @@ func (s *storage) addFeed(feed *Feed) (FeedId, error) {
 	return id, nil
 }
 
-func (s *storage) insertOrReplaceChannel(channel *Channel, feedId FeedId) (ChannelId, error) {
+func (s *storage) insertOrReplaceChannel(ctx context.Context, channel *Channel, feedId FeedId) (ChannelId, error) {
 	query := `
 		INSERT INTO channels (title, link, description, language, last_build_date, feed_id, hash)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -214,7 +211,7 @@ func (s *storage) insertOrReplaceChannel(channel *Channel, feedId FeedId) (Chann
 	channelHash := strconv.FormatInt(int64(feedId), 10) + "_" + s.channelHasher.Hash(channel)
 
 	var id ChannelId
-	err := s.Db.QueryRow(
+	err := s.Db.QueryRowContext(ctx,
 		query,
 		channel.Title,
 		channel.Link,
@@ -234,7 +231,7 @@ func (s *storage) insertOrReplaceChannel(channel *Channel, feedId FeedId) (Chann
 	return id, nil
 }
 
-func (s *storage) insertOrReplaceItem(item *Item, channelId ChannelId) (ItemId, error) {
+func (s *storage) insertOrReplaceItem(ctx context.Context, item *Item, channelId ChannelId) (ItemId, error) {
 	query := `
 		INSERT INTO items (title, link, description, pub_date, creator, channel_id, hash)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -250,7 +247,7 @@ func (s *storage) insertOrReplaceItem(item *Item, channelId ChannelId) (ItemId, 
 	itemHash := strconv.FormatInt(int64(channelId), 10) + "_" + s.itemHasher.Hash(item)
 
 	var id ItemId
-	err := s.Db.QueryRow(
+	err := s.Db.QueryRowContext(ctx,
 		query,
 		item.Title,
 		item.Link,

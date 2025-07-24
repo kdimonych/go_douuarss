@@ -7,9 +7,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/kdimonych/go_douuarss/lib/common"
-	"github.com/kdimonych/go_douuarss/lib/rss"
-	"github.com/kdimonych/go_douuarss/lib/storage"
+	"github.com/kdimonych/go_douuarss/internal/common"
+	"github.com/kdimonych/go_douuarss/internal/rss"
+	"github.com/kdimonych/go_douuarss/internal/storage"
 )
 
 type Config struct {
@@ -31,8 +31,8 @@ type NewsService interface {
 	Stop()
 
 	IsActive() bool
-	RegisterRssFeed(urlStr string) (FeedId, error)
-	StartRssProviders() (ActiveProvidersNumber, error)
+	RegisterRssFeed(ctx context.Context, urlStr string) (FeedId, error)
+	StartRssProviders(ctx context.Context) (ActiveProvidersNumber, error)
 }
 
 type newsServiceImpl struct {
@@ -51,7 +51,7 @@ type NewsServiceBuilder interface {
 	WithStorageBuilder(storageBuilder storage.StorageBuilder) NewsServiceBuilder
 	WithRssClientServiceBuilder(rssClientServiceBuilder rss.RssClientServiceBuilder) NewsServiceBuilder
 	WithMigratorBuilder(migratorBuilder storage.MigratorBuilder) NewsServiceBuilder
-	Build(config *Config) (NewsService, error)
+	Build(ctx context.Context, config *Config) (NewsService, error)
 }
 
 type newsServiceBuilderImpl struct {
@@ -106,14 +106,14 @@ func (b *newsServiceBuilderImpl) WithMigratorBuilder(migratorBuilder storage.Mig
 	return b
 }
 
-func (b *newsServiceBuilderImpl) runMigrations(config *Config) error {
+func (b *newsServiceBuilderImpl) runMigrations(ctx context.Context, config *Config) error {
 	if config.MigrationsDir == "" {
 		return fmt.Errorf("migrations directory cannot be empty")
 	}
 
 	migrator, err := b.migratorBuilder.
 		WithDbConnectionFabric(b.dbConnectionFabric).
-		Build(config.DatabaseURL, config.MigrationsDir)
+		Build(ctx, config.DatabaseURL, config.MigrationsDir)
 	if err != nil {
 		return fmt.Errorf("failed to build migrator: %w", err)
 	}
@@ -139,7 +139,7 @@ func validateConfig(config *Config) error {
 	return nil
 }
 
-func (b *newsServiceBuilderImpl) Build(config *Config) (NewsService, error) {
+func (b *newsServiceBuilderImpl) Build(ctx context.Context, config *Config) (NewsService, error) {
 	// Validate the configuration
 	err := validateConfig(config)
 	if err != nil {
@@ -147,7 +147,7 @@ func (b *newsServiceBuilderImpl) Build(config *Config) (NewsService, error) {
 	}
 
 	// Start the migrator to apply any pending migrations
-	err = b.runMigrations(config)
+	err = b.runMigrations(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
@@ -178,7 +178,7 @@ func (*newsServiceImpl) Init() error {
 	return nil
 }
 
-func (srv *newsServiceImpl) RegisterRssFeed(urlStr string) (FeedId, error) {
+func (srv *newsServiceImpl) RegisterRssFeed(ctx context.Context, urlStr string) (FeedId, error) {
 	err := common.ValidateURL(urlStr)
 	if err != nil {
 		return InvalidFeedId, fmt.Errorf("invalid RSS feed URL: %w", err)
@@ -187,7 +187,7 @@ func (srv *newsServiceImpl) RegisterRssFeed(urlStr string) (FeedId, error) {
 	feed := &storage.Feed{
 		Url: urlStr,
 	}
-	feedId, err := srv.storageSrv.AddFeed(feed)
+	feedId, err := srv.storageSrv.AddFeed(ctx, feed)
 	if err != nil {
 		return InvalidFeedId, fmt.Errorf("failed to add feed to storage: %w", err)
 	}
@@ -196,8 +196,8 @@ func (srv *newsServiceImpl) RegisterRssFeed(urlStr string) (FeedId, error) {
 	return FeedId(feedId), nil
 }
 
-func (srv *newsServiceImpl) StartRssProviders() (ActiveProvidersNumber, error) {
-	feeds, err := srv.storageSrv.GetFeedsOnly()
+func (srv *newsServiceImpl) StartRssProviders(ctx context.Context) (ActiveProvidersNumber, error) {
+	feeds, err := srv.storageSrv.GetFeedsOnly(ctx)
 	if err != nil {
 		return InvalidProvidersNumber, fmt.Errorf("unable to get feeds from storage: %w", err)
 	}
@@ -249,7 +249,7 @@ func (srv *newsServiceImpl) Start(externalWg *sync.WaitGroup, parentCtx context.
 	srv.ctx = ctx
 	srv.cancel = cancel
 
-	activeProviders, err := srv.StartRssProviders()
+	activeProviders, err := srv.StartRssProviders(srv.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start RSS providers: %w", err)
 	}
@@ -308,7 +308,7 @@ func (srv *newsServiceImpl) processRssMessage(msg *rss.RssMessage) {
 	// Here you can insert the channel and items into the database
 	channel := storage.ChannelFromRSS(&msg.Channel)
 
-	if _, err := srv.storageSrv.InsertOrMergeChannel(storage.FeedId(msg.Id), &channel); err != nil {
+	if _, err := srv.storageSrv.InsertOrMergeChannel(srv.ctx, storage.FeedId(msg.Id), &channel); err != nil {
 		log.Printf("[Error] Unable to insert or merge channel:\n\t\"%s\".\n\tDescription: %v\n",
 			channel.Title,
 			common.UnwrapAll(err))

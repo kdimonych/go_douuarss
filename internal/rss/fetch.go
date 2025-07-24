@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/kdimonych/go_douuarss/lib/common"
+	"github.com/kdimonych/go_douuarss/internal/common"
 )
 
 type FetchClient interface {

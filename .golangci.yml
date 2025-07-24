@@ -16,12 +16,13 @@ version: "2"
 run:
   # Only lint these directories (relative to the root of your repo)
   include:
-    - ^lib/dd*
-    - ^services/goose_migrate/*
-    - ^services/news_checker/*
-    - ^cmd/dourssreader/*
+    - ^cmd/*
+    - ^services/*
+    - ^internal/*
   skip-dirs:
-    - ^pgdata/
+    - ^pgdata/*
+    - ^scripts/*
+    - ^services/service_base_docker/
 
 linters:
   default: none

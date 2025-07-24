@@ -21,7 +21,7 @@ func TestNewsServiceBuilder(t *testing.T) {
 		MigrationsDir: testMigrationsDir,
 	}
 
-	service, err := NewNewsServiceBuilder().Build(config)
+	service, err := NewNewsServiceBuilder().Build(context.Background(), config)
 	if err != nil {
 		log.Panicf("[Panic] Unable to initialize news service: %v", err)
 	}
@@ -30,7 +30,7 @@ func TestNewsServiceBuilder(t *testing.T) {
 		log.Panicf("[Panic] Unable to initialize news service: %v", err)
 	}
 
-	feedId, Err := service.RegisterRssFeed(testFeedUrl)
+	feedId, Err := service.RegisterRssFeed(context.Background(), testFeedUrl)
 	if Err != nil {
 		log.Panicf("[Panic] Unable to add RSS feed: %v", Err)
 	}

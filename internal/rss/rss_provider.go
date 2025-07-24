@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kdimonych/go_douuarss/lib/common"
+	"github.com/kdimonych/go_douuarss/internal/common"
 )
 
 const (
