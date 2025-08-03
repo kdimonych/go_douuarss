@@ -1,0 +1,3 @@
+./cmd/dourssreader
+./services/goose_migrate
+./services/news_checker

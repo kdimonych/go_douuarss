@@ -2,54 +2,133 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
-	"github.com/kdimonych/go_douuarss/lib/rss"
-	"github.com/kdimonych/go_douuarss/lib/storage"
+	"github.com/kdimonych/go_douuarss/internal/common"
+	"github.com/kdimonych/go_douuarss/internal/news_service"
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	dbURL := os.Getenv("DATABASE_URL")
+func mainServiceRun(dbURL, migrationsDir string) {
+	if dbURL == "" {
+		log.Panic("DATABASE_URL is not set")
+	}
+	if migrationsDir == "" {
+		migrationsDir = "/app/internal/storage/migrations"
+		log.Printf("[Error] MIGRATIONS_DIR is not set. Use default value: %s", migrationsDir)
+	}
+
+	config := &news_service.Config{
+		DatabaseURL:   dbURL,
+		MigrationsDir: migrationsDir,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	service, err := news_service.NewNewsServiceBuilder().Build(ctx, config)
+	if err != nil {
+		log.Panicf("[Panic] Unable to initialize news service: %v", err)
+	}
+
+	if err := service.Init(); err != nil {
+		log.Panicf("[Panic] Unable to initialize news service: %v", err)
+	}
+
+	waitGroup := &sync.WaitGroup{}
+
+	if err := service.Start(waitGroup, ctx); err != nil {
+		log.Panicf("[Panic] Unable to start news service: %v", err)
+	}
+
+	// Signal handling
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		log.Println("[Info] Shutdown signal received")
+		cancel() // cancel context to stop service
+	}()
+
+	waitGroup.Wait()
+	service.Stop()
+}
+
+func registerFeedRun(dbURL, migrationsDir, feedURL string) {
 	if dbURL == "" {
 		log.Panic("DATABASE_URL is not set")
 	}
 
-	provider := rss.StartRssProvider(context.Background())
-	defer provider.Close()
-
-	s, err := storage.NewStorage(dbURL)
-	if err != nil {
-		log.Panic("Unable to initialize storage: %w", err)
+	if migrationsDir == "" {
+		migrationsDir = "/app/migrations"
+		log.Printf("[Error] MIGRATIONS_DIR is not set. Use default value: %s", migrationsDir)
 	}
-	defer s.Close()
 
-	c := provider.GetChannel()
+	config := &news_service.Config{
+		DatabaseURL:   dbURL,
+		MigrationsDir: migrationsDir,
+	}
 
-	for channel := range c {
-		// Here you can process the channel received from the RSS provider
-		fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
-		fmt.Printf("Received Channel: %s\n", channel.Title)
-		fmt.Printf("Link: %s\n", channel.Link)
-		fmt.Printf("Description: %s\n", channel.Description)
-		fmt.Printf("Language: %s\n", channel.Language)
-		fmt.Printf("Last Build Date: %v\n", channel.LastBuildDate)
+	service, err := news_service.NewNewsServiceBuilder().Build(context.Background(), config)
+	if err != nil {
+		log.Panicf("[Panic] Unable to initialize news service: %v", err)
+	}
 
-		fmt.Println("--------------------------------------------------")
-		for _, item := range channel.Items {
-			fmt.Printf("Item Title: %s\n", item.Title)
-			fmt.Printf("Item Link: %s\n", item.Link)
-			fmt.Printf("Item PubDate: %v\n", item.PubDate)
-			fmt.Printf("Item Creator: %s\n", item.Creator)
-			fmt.Printf("Item Description:\n%s\n", item.Description)
-			fmt.Println("--------------------------------------------------")
-		}
+	if err = service.Init(); err != nil {
+		log.Panicf("[Panic] Unable to initialize news service: %v", err)
+	}
 
-		if _, err := s.InsertOrMergeChannel(&channel); err != nil {
-			log.Printf("Unable to insert or merge channel %s: %v", channel.Title, err)
-			continue
-		}
-		// Here you can insert the channel and items into the database
+	feedId, err := service.RegisterRssFeed(context.Background(), feedURL)
+	if err != nil {
+		log.Panicf("[Panic] Unable to register RSS feed: %v", err)
+	}
+	log.Printf("[Info] Registered RSS feed with ID: %d", feedId)
+
+	service.Stop()
+}
+
+func main() {
+	var dbURL string
+	var migrationsDir string
+	var feedURL string
+
+	dbURL = os.Getenv("DATABASE_URL")
+	migrationsDir = os.Getenv("MIGRATIONS_DIR")
+
+	rootCmd := &cobra.Command{
+		Use:   "news-checker",
+		Short: "News Checker Service",
+		Run: func(_ *cobra.Command, _ []string) {
+			mainServiceRun(dbURL, migrationsDir)
+		},
+	}
+
+	rootCmd.PersistentFlags().StringVar(&dbURL, "db", os.Getenv("DATABASE_URL"), "Database URL")
+	rootCmd.PersistentFlags().StringVar(&migrationsDir, "migrations", os.Getenv("MIGRATIONS_DIR"), "Migrations directory")
+
+	addCmd := &cobra.Command{
+		Use:   "add-feed",
+		Short: "Add a new RSS feed",
+		Run: func(_ *cobra.Command, _ []string) {
+			if feedURL == "" {
+				log.Panic("Feed URL is required")
+			}
+
+			registerFeedRun(dbURL, migrationsDir, feedURL)
+		},
+	}
+	addCmd.Flags().StringVar(&feedURL, "url", "", "RSS Feed URL")
+	if err := addCmd.MarkFlagRequired("url"); err != nil {
+		log.Panicf("Failed to mark flag as required: %v", err)
+	}
+
+	rootCmd.AddCommand(addCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		log.Panicf("Command failed: %v", common.UnwrapAll(err))
 	}
 }

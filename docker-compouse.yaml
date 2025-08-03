@@ -1,27 +1,14 @@
 ---
-# Base go service configuration
-x-go-service-base: &go-service-base
-  env_file:
-    - .env
-  working_dir: /app
-  environment:
-    DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
-
-# Base migration service configuration
-x-goose-base: &goose-base
-  <<: *go-service-base
-  build:
-    # The path to the Dockerfile relative the context
-    dockerfile: ../Dockerfile
-    context: ${GOOSE_MIGRATE_PATH}
-  depends_on:
-    - postgres
-  volumes:
-    - ${GOOSE_MIGRATE_PATH}:/app
-    - ./lib/storage/migrations:/app/migrations
-
 # The services section defines the services that will be run in the Docker Compose environment.
 services:
+  # Base Go service image build configuration
+  service_base:
+    build:
+      context: .
+      dockerfile: ./services/service_base_docker/Dockerfile
+    image: service-base:latest
+    entrypoint: ["true"]
+
   # Postgres SQL DB service configuration
   postgres:
     image: postgres:16
@@ -38,34 +25,23 @@ services:
     volumes:
       - ${POSTGRES_HOST_DB_PATH}:/var/lib/postgresql/data
 
-  # GOOSE migration services configurations
-  goose-migrate:
-    container_name: goose_migrate
-    <<: *goose-base
-    command: ["go", "run", "main.go", "up", "-migrations=./migrations"]
-
-  goose-migrate-down:
-    profiles: ["manual"]
-    container_name: goose_migrate_down
-    <<: *goose-base
-    command: ["go", "run", "main.go", "down", "-migrations=./migrations"]
-
-
   # News Checker service configuration
   news-checker:
     container_name: news_checker
-    <<: *go-service-base
-    restart: unless-stopped
     build:
-      # The path to the Dockerfile relative the context
-      dockerfile: ../Dockerfile
-      context: ${NEWS_CHECKER_PATH}
+      context: .
+      dockerfile: ./services/news_checker/Dockerfile
+    restart: unless-stopped
     depends_on:
+      - service_base
       - postgres
-      - goose-migrate
+    env_file:
+      - .env
     volumes:
-      - ${NEWS_CHECKER_PATH}:/app
-    command: ["go", "run", "main.go"]
+      - .:/app
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+      MIGRATIONS_DIR: /app/internal/storage/migrations
 
 volumes:
   postgres_data:
