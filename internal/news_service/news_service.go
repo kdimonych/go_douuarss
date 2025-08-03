@@ -47,7 +47,7 @@ type newsServiceImpl struct {
 }
 
 type NewsServiceBuilder interface {
-	WithDbConnectionFabric(dbConnectionFabric storage.DbConectionFabric) NewsServiceBuilder
+	WithDbConnectionFabric(dbConnectionFabric storage.DbConnectionFabric) NewsServiceBuilder
 	WithStorageBuilder(storageBuilder storage.StorageBuilder) NewsServiceBuilder
 	WithRssClientServiceBuilder(rssClientServiceBuilder rss.RssClientServiceBuilder) NewsServiceBuilder
 	WithMigratorBuilder(migratorBuilder storage.MigratorBuilder) NewsServiceBuilder
@@ -55,7 +55,7 @@ type NewsServiceBuilder interface {
 }
 
 type newsServiceBuilderImpl struct {
-	dbConnectionFabric      storage.DbConectionFabric
+	dbConnectionFabric      storage.DbConnectionFabric
 	storageBuilder          storage.StorageBuilder
 	migratorBuilder         storage.MigratorBuilder
 	rssClientServiceBuilder rss.RssClientServiceBuilder
@@ -70,7 +70,7 @@ func NewNewsServiceBuilder() NewsServiceBuilder {
 	}
 }
 
-func (b *newsServiceBuilderImpl) WithDbConnectionFabric(dbConnectionFabric storage.DbConectionFabric) NewsServiceBuilder {
+func (b *newsServiceBuilderImpl) WithDbConnectionFabric(dbConnectionFabric storage.DbConnectionFabric) NewsServiceBuilder {
 	if dbConnectionFabric == nil {
 		log.Println("Nil DbConnectionFabric provided. Using default DbConnectionFabric")
 		dbConnectionFabric = storage.NewDbConnectionFabric()

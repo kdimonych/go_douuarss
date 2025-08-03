@@ -73,12 +73,12 @@ func (migrator *migratorImpl) StorageVersion() (int64, error) {
 }
 
 type MigratorBuilder interface {
-	WithDbConnectionFabric(dbConnectionFabric DbConectionFabric) MigratorBuilder
+	WithDbConnectionFabric(dbConnectionFabric DbConnectionFabric) MigratorBuilder
 	Build(ctx context.Context, dbURL, migrationsDir string) (Migrator, error)
 }
 
 type migratorBuilderImpl struct {
-	dbConnectionFabric DbConectionFabric
+	dbConnectionFabric DbConnectionFabric
 }
 
 func NewMigratorBuilder() MigratorBuilder {
@@ -87,7 +87,7 @@ func NewMigratorBuilder() MigratorBuilder {
 	}
 }
 
-func (builder *migratorBuilderImpl) WithDbConnectionFabric(dbConnectionFabric DbConectionFabric) MigratorBuilder {
+func (builder *migratorBuilderImpl) WithDbConnectionFabric(dbConnectionFabric DbConnectionFabric) MigratorBuilder {
 	if dbConnectionFabric == nil {
 		log.Println("[Warning] Nil DbConnectionFabric provided. Using default DbConnectionFabric")
 		dbConnectionFabric = NewDbConnectionFabric()
@@ -102,7 +102,7 @@ func (builder *migratorBuilderImpl) Build(ctx context.Context, dbURL, migrations
 	}
 
 	if migrationsDir == "" {
-		return nil, fmt.Errorf("migration directory cannot be emlpty")
+		return nil, fmt.Errorf("migration directory cannot be empty")
 	}
 
 	db, err := builder.dbConnectionFabric.CreateDbConnection(ctx, "postgres", dbURL)

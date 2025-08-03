@@ -8,18 +8,18 @@ import (
 	"log"
 )
 
-type DbConectionFabric interface {
+type DbConnectionFabric interface {
 	CreateDbConnection(ctx context.Context, driver string, dbURL string) (*sql.DB, error)
 }
 
-type dbConectionFabricImpl struct {
+type dbConnectionFabricImpl struct {
 }
 
-func NewDbConnectionFabric() DbConectionFabric {
-	return &dbConectionFabricImpl{}
+func NewDbConnectionFabric() DbConnectionFabric {
+	return &dbConnectionFabricImpl{}
 }
 
-func (*dbConectionFabricImpl) CreateDbConnection(ctx context.Context, driver, dbURL string) (*sql.DB, error) {
+func (*dbConnectionFabricImpl) CreateDbConnection(ctx context.Context, driver, dbURL string) (*sql.DB, error) {
 	if driver == "" || dbURL == "" {
 		return nil, errors.New("driver and dbURL must be provided")
 	}

@@ -106,14 +106,14 @@ func (s *storage) InsertOrMergeChannel(ctx context.Context, feedId FeedId, chann
 type StorageBuilder interface {
 	WithChannelHasher(channelHasher ChannelHasher) StorageBuilder
 	WithItemHasher(itemHasher ItemHasher) StorageBuilder
-	WithDbConnectionFabric(dbConnectionFabric DbConectionFabric) StorageBuilder
+	WithDbConnectionFabric(dbConnectionFabric DbConnectionFabric) StorageBuilder
 	Build(dbURL string) (Storage, error)
 }
 
 type storageBuilder struct {
 	channelHasher      ChannelHasher
 	itemHasher         ItemHasher
-	dbConnectionFabric DbConectionFabric
+	dbConnectionFabric DbConnectionFabric
 }
 
 func NewStorageBuilder() StorageBuilder {
@@ -141,7 +141,7 @@ func (b *storageBuilder) WithItemHasher(itemHasher ItemHasher) StorageBuilder {
 	return b
 }
 
-func (b *storageBuilder) WithDbConnectionFabric(dbConnectionFabric DbConectionFabric) StorageBuilder {
+func (b *storageBuilder) WithDbConnectionFabric(dbConnectionFabric DbConnectionFabric) StorageBuilder {
 	if dbConnectionFabric == nil {
 		log.Println("Nil DbConnectionFabric provided. Using default DbConnectionFabric")
 		dbConnectionFabric = NewDbConnectionFabric()
